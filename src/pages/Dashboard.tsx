@@ -2,23 +2,20 @@ import { useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { SignedIn, SignedOut, SignInButton, UserButton, useUser } from "@clerk/clerk-react";
 import { useMutation, useQuery } from "convex/react";
-import { ArrowRight } from "lucide-react";
-import PremiumBackground from "../components/PremiumBackground";
+import { ArrowUp, ArrowRight } from "lucide-react";
 import LazyClipLogo from "../components/LazyClipLogo";
 import { api } from "../lib/convexApi";
 
-// Modes differ only by input source — the tag names that source (real info, not decoration).
 const MODES = [
-  { id: "generate", tag: "from a topic", label: "Generate", hint: "topic → viral reel" },
-  { id: "edit", tag: "from a clip", label: "Edit", hint: "clip → captioned short" },
-  { id: "clip", tag: "from youtube", label: "Clip", hint: "link + timestamps" },
+  { id: "generate", label: "Generate", placeholder: "Describe the reel you want — e.g. why UPI beat credit cards in India" },
+  { id: "edit", label: "Edit", placeholder: "Describe the edit — e.g. caption it and make it vertical" },
+  { id: "clip", label: "Clip", placeholder: "Paste a YouTube link + a timestamp — e.g. https://youtu.be/… 2:30 to 3:15" },
 ] as const;
+const ASPECTS = [{ id: "9:16", label: "9:16" }, { id: "1:1", label: "1:1" }, { id: "16:9", label: "16:9" }] as const;
 
 export default function Dashboard() {
   return (
-    <div className="relative min-h-screen overflow-x-hidden bg-warmBg text-charcoal selection:bg-electricBlue/15">
-      <div className="noise-overlay" />
-      <PremiumBackground />
+    <div className="min-h-screen bg-warmBg text-charcoal selection:bg-electricBlue/15">
       <SignedOut><SignInGate /></SignedOut>
       <SignedIn><DashboardInner /></SignedIn>
     </div>
@@ -27,18 +24,17 @@ export default function Dashboard() {
 
 function SignInGate() {
   return (
-    <div className="relative z-10 flex min-h-screen flex-col items-center justify-center px-6 text-center">
+    <div className="flex min-h-screen flex-col items-center justify-center px-6 text-center">
       <Link to="/" className="mb-8 flex items-center gap-2">
         <LazyClipLogo className="h-10 w-10 text-charcoal" />
         <span className="font-display text-2xl font-bold tracking-tight">lazyclip</span>
       </Link>
-      <div className="font-mono text-[11px] uppercase tracking-[0.22em] text-electricBlue">Create</div>
-      <h1 className="mt-2 font-display text-3xl font-extrabold tracking-[-0.03em] md:text-4xl">Sign in to start creating</h1>
-      <p className="mt-3 max-w-sm font-mono text-sm text-secondaryText">
+      <h1 className="font-display text-3xl font-extrabold tracking-[-0.03em] md:text-4xl">Sign in to start creating</h1>
+      <p className="mt-3 max-w-sm font-sans text-sm text-secondaryText">
         Use your Google account. Waitlist members get Founding Creator credits automatically.
       </p>
       <SignInButton mode="modal">
-        <button className="group mt-7 inline-flex items-center gap-2 rounded-2xl bg-charcoal px-7 py-3.5 text-sm font-semibold text-white transition-colors hover:bg-electricBlue focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-electricBlue focus-visible:ring-offset-2 focus-visible:ring-offset-warmBg">
+        <button className="group mt-7 inline-flex items-center gap-2 rounded-xl bg-charcoal px-7 py-3.5 text-sm font-semibold text-white transition-colors hover:bg-electricBlue focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-electricBlue focus-visible:ring-offset-2 focus-visible:ring-offset-warmBg">
           Continue with Google
           <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" />
         </button>
@@ -48,6 +44,7 @@ function SignInGate() {
 }
 
 type Me = { credits: number; freeRemaining: number; freeLimit: number; founding: boolean; canGenerate: boolean } | null | undefined;
+type Job = { _id: string; mode: string; prompt: string; status: string; resultUrl?: string };
 
 function DashboardInner() {
   const navigate = useNavigate();
@@ -55,9 +52,10 @@ function DashboardInner() {
   const me = useQuery(api.users.currentUser) as Me;
   const ensureUser = useMutation(api.users.ensureUser);
   const requestGeneration = useMutation(api.generate.requestGeneration);
-  const jobs = useQuery(api.generate.myJobs) as Array<{ _id: string; mode: string; prompt: string; status: string; resultUrl?: string }> | undefined;
+  const jobs = useQuery(api.generate.myJobs) as Job[] | undefined;
 
   const [mode, setMode] = useState<string>("generate");
+  const [aspect, setAspect] = useState<string>("9:16");
   const [prompt, setPrompt] = useState("");
   const [status, setStatus] = useState("");
   const [busy, setBusy] = useState(false);
@@ -67,13 +65,12 @@ function DashboardInner() {
   }, [user?.id]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const generate = async () => {
-    if (!prompt.trim()) { setStatus("Tell it what to make first."); return; }
+    if (!prompt.trim()) { setStatus("Type a prompt to start."); return; }
     setBusy(true); setStatus("");
+    const aspectPhrase = aspect === "1:1" ? " (square)" : aspect === "16:9" ? " (landscape)" : "";
     try {
-      const r = (await requestGeneration({ mode, prompt })) as { mode: string };
-      setStatus(r.mode === "free"
-        ? "Queued — free generation used. Your reel is being made, it'll appear below shortly."
-        : "Queued — 1 credit used. Your reel is being made, it'll appear below shortly.");
+      const r = (await requestGeneration({ mode, prompt: prompt.trim() + aspectPhrase })) as { mode: string };
+      setStatus(r.mode === "free" ? "Queued — free generation used. It'll appear below shortly." : "Queued — 1 credit used. It'll appear below shortly.");
       setPrompt("");
     } catch (e: any) {
       if (e?.data?.code === "NO_CREDITS") setStatus("out-of-credits");
@@ -83,117 +80,155 @@ function DashboardInner() {
 
   const free = me?.freeRemaining ?? 0;
   const credits = me?.credits ?? 0;
-  const placeholder = mode === "clip"
-    ? "Paste a YouTube link + a timestamp, e.g. https://youtu.be/… 2:30 to 3:15"
-    : mode === "edit"
-    ? "Describe the edit, e.g. caption it and make it vertical"
-    : "What should the reel be about? e.g. why UPI beat credit cards";
+  const activeMode = MODES.find((m) => m.id === mode)!;
 
   return (
     <>
-      <header className="relative z-10 mx-auto flex max-w-3xl items-center justify-between px-6 py-5">
-        <Link to="/" className="flex items-center gap-2">
-          <LazyClipLogo className="h-9 w-9 text-charcoal" />
-          <span className="font-display text-2xl font-bold tracking-tight">lazyclip</span>
-        </Link>
-        <div className="flex items-center gap-3 sm:gap-4">
-          {me?.founding && (
-            <span className="hidden rounded-full border border-electricBlue/20 bg-electricBlue/[0.06] px-3 py-1 font-mono text-[10px] font-bold uppercase tracking-widest text-electricBlue sm:inline">
-              Founding Creator
+      {/* App bar */}
+      <header className="sticky top-0 z-20 border-b border-black/[0.06] bg-warmBg/80 backdrop-blur">
+        <div className="mx-auto flex max-w-6xl items-center justify-between px-6 py-3.5">
+          <Link to="/" className="flex items-center gap-2">
+            <LazyClipLogo className="h-8 w-8 text-charcoal" />
+            <span className="font-display text-xl font-bold tracking-tight">lazyclip</span>
+          </Link>
+          <div className="flex items-center gap-3 sm:gap-4">
+            {me?.founding && (
+              <span className="hidden rounded-full border border-electricBlue/20 bg-electricBlue/[0.06] px-3 py-1 font-mono text-[10px] font-bold uppercase tracking-widest text-electricBlue sm:inline">
+                Founding Creator
+              </span>
+            )}
+            <span className="rounded-full border border-black/10 bg-white px-3 py-1.5 font-mono text-[10px] font-bold uppercase tracking-widest shadow-sm">
+              {free > 0 ? `${free} free left` : `${credits} credits`}
             </span>
-          )}
-          <span className="rounded-full border border-charcoal/10 bg-white px-3 py-1.5 font-mono text-[10px] font-bold uppercase tracking-widest shadow-sm">
-            {free > 0 ? `${free} free left` : `${credits} credits`}
-          </span>
-          <Link to="/pricing" className="hidden text-sm font-semibold transition-colors hover:text-electricBlue sm:inline">Buy credits</Link>
-          <UserButton afterSignOutUrl="/" />
+            <Link to="/pricing" className="hidden text-sm font-semibold transition-colors hover:text-electricBlue sm:inline">Buy credits</Link>
+            <UserButton afterSignOutUrl="/" />
+          </div>
         </div>
       </header>
 
-      <main className="relative z-10 mx-auto max-w-3xl px-6 pb-24 pt-4">
-        <div className="font-mono text-[11px] uppercase tracking-[0.22em] text-electricBlue">Create</div>
-        <h1 className="mt-2 font-display text-4xl font-extrabold leading-[0.95] tracking-[-0.03em] md:text-5xl">
-          Make a reel<br />just by asking.
-        </h1>
-        <p className="mt-3 font-mono text-sm text-secondaryText">Pick a mode, describe it, and LazyClip does the rest.</p>
+      <main className="mx-auto max-w-6xl px-6 pb-24 pt-10">
+        {/* Composer */}
+        <div className="mx-auto max-w-3xl">
+          <div className="font-mono text-[11px] uppercase tracking-[0.22em] text-secondaryText">New reel</div>
+          <div className="mt-3 rounded-2xl border border-black/10 bg-white shadow-sm transition-shadow focus-within:shadow-md focus-within:border-charcoal/20">
+            <textarea
+              value={prompt}
+              onChange={(e) => setPrompt(e.target.value)}
+              onKeyDown={(e) => { if ((e.metaKey || e.ctrlKey) && e.key === "Enter") { e.preventDefault(); void generate(); } }}
+              rows={3}
+              placeholder={activeMode.placeholder}
+              className="w-full resize-none bg-transparent px-5 pt-5 pb-3 font-sans text-[15px] leading-relaxed outline-none placeholder:text-secondaryText/70"
+            />
+            <div className="flex flex-wrap items-center justify-between gap-3 border-t border-black/[0.06] px-3 py-3">
+              {/* Mode segmented control */}
+              <div className="flex items-center gap-0.5 rounded-xl bg-warmBg p-0.5">
+                {MODES.map((m) => (
+                  <button key={m.id} onClick={() => setMode(m.id)}
+                    className={`rounded-lg px-3 py-1.5 text-xs font-semibold transition-colors ${mode === m.id ? "bg-white text-charcoal shadow-sm" : "text-secondaryText hover:text-charcoal"}`}>
+                    {m.label}
+                  </button>
+                ))}
+              </div>
 
-        {/* Mode picker — icon-free, source-labelled */}
-        <div className="mt-8 grid grid-cols-3 gap-2.5">
-          {MODES.map((m) => {
-            const active = mode === m.id;
-            return (
-              <button key={m.id} onClick={() => setMode(m.id)}
-                className={`rounded-2xl border p-4 text-left transition-colors ${active ? "border-electricBlue bg-electricBlue/[0.05]" : "border-[#E5E5E2] bg-white hover:border-charcoal/30"}`}>
-                <div className={`font-mono text-[10px] uppercase tracking-widest ${active ? "text-electricBlue" : "text-secondaryText"}`}>{m.tag}</div>
-                <div className="mt-2 font-display text-base font-bold">{m.label}</div>
-                <div className="mt-0.5 font-mono text-[10px] text-secondaryText">{m.hint}</div>
-              </button>
-            );
-          })}
-        </div>
-
-        <textarea value={prompt} onChange={(e) => setPrompt(e.target.value)} rows={4} placeholder={placeholder}
-          className="mt-4 w-full resize-none rounded-2xl border border-[#E5E5E2] bg-white p-4 font-sans text-sm outline-none transition-colors focus:border-electricBlue" />
-
-        <button onClick={generate} disabled={busy}
-          className="group mt-3 flex w-full items-center justify-center gap-2 rounded-2xl bg-charcoal py-4 text-sm font-semibold text-white transition-colors hover:bg-electricBlue disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-electricBlue focus-visible:ring-offset-2 focus-visible:ring-offset-warmBg">
-          {busy ? (
-            <span className="h-4 w-4 animate-spin rounded-full border-2 border-white/30 border-t-white" />
-          ) : (
-            <>Generate reel {free > 0 ? "(free)" : "(1 credit)"}<ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" /></>
-          )}
-        </button>
-
-        {status === "out-of-credits" ? (
-          <div className="mt-4 rounded-2xl border border-[#E5E5E2] bg-white p-4 text-center">
-            <p className="font-sans text-sm">You're out of credits.</p>
-            <Link to="/pricing" className="mt-2 inline-flex items-center gap-1.5 rounded-xl bg-electricBlue px-5 py-2.5 text-sm font-semibold text-white">
-              Get more credits <ArrowRight className="h-4 w-4" />
-            </Link>
-          </div>
-        ) : status ? (
-          <p className="mt-4 text-center font-mono text-xs text-secondaryText">{status}</p>
-        ) : null}
-
-        {jobs && jobs.length > 0 && (
-          <div className="mt-12">
-            <h2 className="font-mono text-[11px] uppercase tracking-[0.22em] text-secondaryText">Your reels</h2>
-            <div className="mt-4 space-y-2.5">
-              {jobs.map((j) => (
-                <div key={j._id}
-                  onDoubleClick={() => j.status === "done" && navigate(`/studio/${j._id}`)}
-                  title={j.status === "done" ? "Double-click to open in Studio" : undefined}
-                  className="flex items-center gap-4 rounded-2xl border border-[#E5E5E2] bg-white p-4">
-                  {j.status === "done" && j.resultUrl ? (
-                    <video src={j.resultUrl} controls playsInline preload="metadata"
-                      className="aspect-[9/16] w-[104px] shrink-0 rounded-xl bg-black object-contain" />
-                  ) : (
-                    <div className="flex aspect-[9/16] w-[104px] shrink-0 items-center justify-center rounded-xl border border-[#E5E5E2] bg-warmBg">
-                      {j.status === "failed"
-                        ? <span className="font-mono text-[10px] text-red-500">failed</span>
-                        : <span className="h-4 w-4 animate-spin rounded-full border-2 border-secondaryText/30 border-t-secondaryText" />}
-                    </div>
-                  )}
-                  <div className="min-w-0 flex-1">
-                    <div className="font-mono text-[10px] uppercase tracking-widest text-secondaryText">{j.mode}</div>
-                    <div className="truncate font-sans text-sm">{j.prompt}</div>
-                    {j.status === "done" && j.resultUrl ? (
-                      <button onClick={() => navigate(`/studio/${j._id}`)}
-                        className="group mt-2 inline-flex items-center gap-1 rounded-xl bg-charcoal px-3.5 py-1.5 text-xs font-semibold text-white transition-colors hover:bg-electricBlue">
-                        Open in Studio <ArrowRight className="h-3.5 w-3.5 transition-transform group-hover:translate-x-0.5" />
-                      </button>
-                    ) : j.status === "failed" ? (
-                      <div className="mt-1 font-mono text-xs text-red-500">generation failed</div>
-                    ) : (
-                      <div className="mt-1 font-mono text-xs text-secondaryText">{j.status}…</div>
-                    )}
-                  </div>
+              <div className="flex items-center gap-2">
+                {/* Aspect ratio */}
+                <div className="flex items-center gap-0.5 rounded-xl bg-warmBg p-0.5" title="Aspect ratio">
+                  {ASPECTS.map((a) => (
+                    <button key={a.id} onClick={() => setAspect(a.id)}
+                      className={`rounded-lg px-2.5 py-1.5 font-mono text-[11px] font-semibold transition-colors ${aspect === a.id ? "bg-white text-charcoal shadow-sm" : "text-secondaryText hover:text-charcoal"}`}>
+                      {a.label}
+                    </button>
+                  ))}
                 </div>
-              ))}
+                {/* Generate */}
+                <button onClick={generate} disabled={busy}
+                  className="flex h-9 items-center gap-1.5 rounded-xl bg-charcoal px-4 text-sm font-semibold text-white transition-colors hover:bg-electricBlue disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-electricBlue focus-visible:ring-offset-2 focus-visible:ring-offset-white">
+                  {busy ? (
+                    <span className="h-4 w-4 animate-spin rounded-full border-2 border-white/30 border-t-white" />
+                  ) : (
+                    <>Generate <ArrowUp className="h-4 w-4" /></>
+                  )}
+                </button>
+              </div>
             </div>
           </div>
-        )}
+          <div className="mt-2 flex items-center justify-between px-1">
+            <p className="font-mono text-[10px] text-secondaryText">
+              {status === "out-of-credits" ? "" : status || `${free > 0 ? "free generation" : "1 credit"} · ⌘↵ to run`}
+            </p>
+          </div>
+          {status === "out-of-credits" && (
+            <div className="mt-3 flex items-center justify-between rounded-xl border border-[#E5E5E2] bg-white px-4 py-3">
+              <p className="font-sans text-sm">You're out of credits.</p>
+              <Link to="/pricing" className="inline-flex items-center gap-1.5 rounded-lg bg-electricBlue px-4 py-2 text-sm font-semibold text-white">
+                Get credits <ArrowRight className="h-4 w-4" />
+              </Link>
+            </div>
+          )}
+        </div>
+
+        {/* Gallery */}
+        <div className="mt-14">
+          <div className="flex items-baseline justify-between">
+            <h2 className="font-mono text-[11px] uppercase tracking-[0.22em] text-secondaryText">Your reels</h2>
+            {jobs && jobs.length > 0 && <span className="font-mono text-[11px] text-secondaryText/70">{jobs.length}</span>}
+          </div>
+
+          {jobs === undefined ? (
+            <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
+              {Array.from({ length: 4 }).map((_, i) => (
+                <div key={i} className="aspect-[9/16] animate-pulse rounded-xl bg-black/[0.06]" />
+              ))}
+            </div>
+          ) : jobs.length === 0 ? (
+            <p className="mt-4 font-sans text-sm text-secondaryText">No reels yet — your generations show up here.</p>
+          ) : (
+            <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
+              {jobs.map((j) => <ReelTile key={j._id} job={j} onOpen={() => navigate(`/studio/${j._id}`)} />)}
+            </div>
+          )}
+        </div>
       </main>
     </>
+  );
+}
+
+function ReelTile({ job, onOpen }: { job: Job; onOpen: () => void }) {
+  const done = job.status === "done" && !!job.resultUrl;
+  const failed = job.status === "failed";
+  return (
+    <div
+      onClick={() => done && onOpen()}
+      className={`group relative aspect-[9/16] overflow-hidden rounded-xl border border-black/10 bg-black ${done ? "cursor-pointer" : ""}`}
+    >
+      {done ? (
+        <video
+          src={job.resultUrl}
+          muted loop playsInline preload="metadata"
+          onMouseEnter={(e) => { void e.currentTarget.play().catch(() => {}); }}
+          onMouseLeave={(e) => { e.currentTarget.pause(); e.currentTarget.currentTime = 0; }}
+          className="h-full w-full object-cover"
+        />
+      ) : (
+        <div className="flex h-full w-full items-center justify-center bg-warmBg">
+          {failed
+            ? <span className="font-mono text-[10px] text-red-500">failed</span>
+            : <span className="flex flex-col items-center gap-2 text-secondaryText"><span className="h-5 w-5 animate-spin rounded-full border-2 border-secondaryText/30 border-t-secondaryText" /><span className="font-mono text-[10px] uppercase tracking-widest">{job.status}</span></span>}
+        </div>
+      )}
+
+      {/* label + hover CTA */}
+      <div className="pointer-events-none absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/80 via-black/25 to-transparent p-3">
+        <div className="font-mono text-[9px] uppercase tracking-widest text-white/60">{job.mode}</div>
+        <div className="mt-0.5 line-clamp-2 font-sans text-xs font-medium text-white">{job.prompt}</div>
+      </div>
+      {done && (
+        <div className="pointer-events-none absolute inset-0 flex items-center justify-center bg-black/20 opacity-0 transition-opacity group-hover:opacity-100">
+          <span className="inline-flex items-center gap-1.5 rounded-lg bg-white/95 px-3 py-1.5 text-xs font-semibold text-charcoal">
+            Open in Studio <ArrowRight className="h-3.5 w-3.5" />
+          </span>
+        </div>
+      )}
+    </div>
   );
 }
