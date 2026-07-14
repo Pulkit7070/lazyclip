@@ -21,6 +21,28 @@ import type { Incoming } from './index.js';
 const run = promisify(execFile);
 const reely = createReely({ freeDailyLimit: Number(process.env.FREE_DAILY_LIMIT ?? 3) });
 
+// Onboarding mirrors the dashboard's three modes (Generate / Edit / Clip).
+const WELCOME = [
+  'LazyClip — your video editor, in chat. 🎬',
+  '',
+  'Three ways to use me:',
+  '',
+  '🧠 Generate — send a topic',
+  '     e.g. "make a reel on why UPI beat credit cards"',
+  '',
+  '✂️ Edit — send a video + an instruction',
+  '     e.g. "caption it and make it vertical"',
+  '',
+  '📎 Clip — send a YouTube link + timestamps',
+  '     e.g. "https://youtu.be/xyz 2:30 to 3:15"',
+  '     (or just paste the link — I\'ll pick the best moments)',
+  '',
+  'Vertical by default. Add "square" or "landscape" to any request.',
+  'Prefer a screen? Full studio at lazyclip.buzz',
+].join('\n');
+
+const FOOTER = 'Made with LazyClip · lazyclip.buzz';
+
 async function main() {
   const token = process.env.TELEGRAM_BOT_TOKEN;
   if (!token) { console.error('set TELEGRAM_BOT_TOKEN in .env'); process.exit(1); }
@@ -41,7 +63,7 @@ async function main() {
     let text: string = ctx.message.text ?? ctx.message.caption ?? '';
 
     if (/^\/(start|help)/.test(text.trim())) {
-      return ctx.reply('hey! send me:\n• a video + "caption it" / "make it vertical"\n• a youtube link + "2:30 to 3:15"\n• just a youtube link — I\'ll find the best moments myself\n• or a topic — I\'ll make the reel\n\nratio: vertical by default — add "square" (1:1) or "landscape" (16:9) to any request');
+      return ctx.reply(WELCOME, { disable_web_page_preview: true });
     }
 
     if (/^\s*(yes|y|confirm)\s*$/i.test(text)) {
@@ -51,6 +73,7 @@ async function main() {
       }
       if (pending.has(userId)) {
         const prev = pending.get(userId)!; pending.delete(userId);
+        await ctx.reply('Great — clipping that now. About a minute…');
         return dispatch({ ...prev, confirmedOwnership: true }, ctx, pending);
       }
     }
@@ -62,7 +85,7 @@ async function main() {
     // bare link, no range -> auto-moments (transcript -> LLM picks the best segments)
     if (url && !/\d{1,2}[:.]\d{2}\s*(?:to|-|–|—|until)/i.test(text)) {
       pendingAuto.set(userId, url);
-      return ctx.reply("I'll read the transcript and clip the best moments myself. confirm you own or have the rights to use this video — reply \"yes\" to proceed.");
+      return ctx.reply('Quick check: do you own or have the rights to use this video?\nReply "yes" and I\'ll read the transcript and clip the best moments.');
     }
 
     let attachmentPath: string | undefined;
@@ -71,8 +94,32 @@ async function main() {
       const link = await ctx.telegram.getFileLink(fileId);
       attachmentPath = await download(link.href);
     }
+
+    // Nothing actionable yet (e.g. a plain "hi") — point them at how it works.
+    if (!attachmentPath && !text.trim()) return ctx.reply(WELCOME, { disable_web_page_preview: true });
+
+    // Acknowledge the render up front, except when a YouTube clip still needs the ownership check.
+    const needsOwnership = !!url && /\d{1,2}[:.]\d{2}\s*(?:to|-|–|—|until)/i.test(text);
+    if (!needsOwnership) {
+      await ctx.reply(attachmentPath
+        ? 'On it — editing your clip. This takes about a minute…'
+        : 'On it — generating your reel. This takes about a minute…').catch(() => {});
+    }
     return dispatch({ userId, platform: 'telegram', text, attachmentPath, isPro: false }, ctx, pending);
   });
+
+  // Register the command menu + profile copy so the bot presents like the product (best-effort).
+  try {
+    await bot.telegram.setMyCommands([
+      { command: 'start', description: 'How LazyClip works' },
+      { command: 'help', description: 'Show examples' },
+    ]);
+    await bot.telegram.setMyShortDescription('Your video editor in chat — generate, edit, and clip vertical reels.');
+    await bot.telegram.setMyDescription(
+      'Send a topic, a video, or a YouTube link and get back a captioned vertical reel.\n\n' +
+      '• Generate from an idea\n• Edit a clip you send\n• Clip a moment from any YouTube video\n\nFull studio at lazyclip.buzz',
+    );
+  } catch (e) { console.error('setup (commands/description) failed:', (e as Error).message); }
 
   bot.launch();
   console.log('reely gateway up (telegram)');
@@ -95,7 +142,7 @@ async function autoMoments(url: string, userId: string, ctx: any) {
     await ctx.reply(`✂️ ${m.start}–${m.end}: ${m.hook}`).catch(() => {});
     await dispatch({ userId, platform: 'telegram', text: `clip ${url} ${m.start} to ${m.end}`,
       isPro: false, confirmedOwnership: true,
-      editPlan: { reframe: m.reframe, broll: m.broll } }, ctx, new Map());
+      editPlan: { reframe: m.reframe, broll: m.broll, hook: m.hook, gifs: m.gifs, zooms: m.zooms } }, ctx, new Map());
   }
 }
 
@@ -107,7 +154,8 @@ async function dispatch(inc: Incoming, ctx: any, pending: Map<string, Incoming>)
       await ctx.reply(r.text);
       if (/rights|confirm/i.test(r.text)) pending.set(inc.userId, inc);
     } else {
-      await ctx.replyWithVideo({ source: r.filePath }, { caption: r.caption });
+      const caption = [r.caption, FOOTER].filter(Boolean).join('\n\n');
+      await ctx.replyWithVideo({ source: r.filePath }, { caption });
       await shareToGcs(r.filePath, ctx).catch(() => {});   // best-effort; never fails the reply
     }
   }
