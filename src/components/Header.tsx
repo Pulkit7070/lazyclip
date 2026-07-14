@@ -17,7 +17,7 @@ export default function Header() {
       {/* Right Side - Actions */}
       <div className="flex items-center gap-5 sm:gap-6">
         <a
-          href="https://t.me/Lazy_clip_bot"
+          href="https://telegram.me/Lazy_clip_bot"
           target="_blank"
           rel="noreferrer"
           className="hidden sm:inline text-sm font-semibold text-charcoal hover:text-electricBlue transition-colors hover-trigger"

@@ -309,7 +309,7 @@ export default function HeroSection() {
 
           {/* Try the live bot immediately */}
           <a
-            href="https://t.me/Lazy_clip_bot"
+            href="https://telegram.me/Lazy_clip_bot"
             target="_blank"
             rel="noreferrer"
             className="mt-4 inline-flex items-center gap-1.5 text-sm font-semibold text-electricBlue hover:opacity-80 transition-opacity hover-trigger self-start"
