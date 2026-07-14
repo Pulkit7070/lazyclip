@@ -1,0 +1,6 @@
+backend/
+convex/
+docs/
+.superpowers/
+*.pdf
+*.md
