@@ -2,36 +2,46 @@ import { useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { SignedIn, SignedOut, SignInButton, UserButton, useUser } from "@clerk/clerk-react";
 import { useMutation, useQuery } from "convex/react";
-import { Zap, Sparkles, Video, Scissors, Film, Star } from "lucide-react";
+import { ArrowRight } from "lucide-react";
+import PremiumBackground from "../components/PremiumBackground";
+import LazyClipLogo from "../components/LazyClipLogo";
 import { api } from "../lib/convexApi";
 
+// Modes differ only by input source — the tag names that source (real info, not decoration).
 const MODES = [
-  { id: "generate", label: "Generate", icon: Sparkles, hint: "topic → viral reel" },
-  { id: "edit", label: "Edit", icon: Scissors, hint: "clip → captioned short" },
-  { id: "clip", label: "Clip", icon: Film, hint: "YouTube link + timestamps" },
+  { id: "generate", tag: "from a topic", label: "Generate", hint: "topic → viral reel" },
+  { id: "edit", tag: "from a clip", label: "Edit", hint: "clip → captioned short" },
+  { id: "clip", tag: "from youtube", label: "Clip", hint: "link + timestamps" },
 ] as const;
 
 export default function Dashboard() {
   return (
-    <div className="min-h-screen bg-warmBg text-charcoal">
-      <SignedOut>
-        <SignInGate />
-      </SignedOut>
-      <SignedIn>
-        <DashboardInner />
-      </SignedIn>
+    <div className="relative min-h-screen overflow-x-hidden bg-warmBg text-charcoal selection:bg-electricBlue/15">
+      <div className="noise-overlay" />
+      <PremiumBackground />
+      <SignedOut><SignInGate /></SignedOut>
+      <SignedIn><DashboardInner /></SignedIn>
     </div>
   );
 }
 
 function SignInGate() {
   return (
-    <div className="min-h-screen flex flex-col items-center justify-center px-6 text-center">
-      <Link to="/" className="font-display font-bold text-2xl tracking-tight mb-6">lazyclip</Link>
-      <h1 className="font-display font-extrabold text-3xl md:text-4xl">Sign in to start creating</h1>
-      <p className="font-sans text-secondaryText mt-3 max-w-sm">Use your Google account. Waitlist members get Founding Creator credits automatically.</p>
+    <div className="relative z-10 flex min-h-screen flex-col items-center justify-center px-6 text-center">
+      <Link to="/" className="mb-8 flex items-center gap-2">
+        <LazyClipLogo className="h-10 w-10 text-charcoal" />
+        <span className="font-display text-2xl font-bold tracking-tight">lazyclip</span>
+      </Link>
+      <div className="font-mono text-[11px] uppercase tracking-[0.22em] text-electricBlue">Create</div>
+      <h1 className="mt-2 font-display text-3xl font-extrabold tracking-[-0.03em] md:text-4xl">Sign in to start creating</h1>
+      <p className="mt-3 max-w-sm font-mono text-sm text-secondaryText">
+        Use your Google account. Waitlist members get Founding Creator credits automatically.
+      </p>
       <SignInButton mode="modal">
-        <button className="mt-7 rounded-xl bg-charcoal text-white px-7 py-3.5 font-semibold text-sm hover:bg-electricBlue transition-colors">Continue with Google</button>
+        <button className="group mt-7 inline-flex items-center gap-2 rounded-2xl bg-charcoal px-7 py-3.5 text-sm font-semibold text-white transition-colors hover:bg-electricBlue focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-electricBlue focus-visible:ring-offset-2 focus-visible:ring-offset-warmBg">
+          Continue with Google
+          <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" />
+        </button>
       </SignInButton>
     </div>
   );
@@ -54,14 +64,16 @@ function DashboardInner() {
 
   useEffect(() => {
     ensureUser({ email: user?.primaryEmailAddress?.emailAddress, name: user?.fullName ?? undefined }).catch(() => {});
-  }, [user?.id]);
+  }, [user?.id]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const generate = async () => {
     if (!prompt.trim()) { setStatus("Tell it what to make first."); return; }
     setBusy(true); setStatus("");
     try {
       const r = (await requestGeneration({ mode, prompt })) as { mode: string };
-      setStatus(r.mode === "free" ? "✅ Queued (free generation used). Your reel is being made, it'll appear here shortly." : "✅ Queued (1 credit used). Your reel is being made, it'll appear here shortly.");
+      setStatus(r.mode === "free"
+        ? "Queued — free generation used. Your reel is being made, it'll appear below shortly."
+        : "Queued — 1 credit used. Your reel is being made, it'll appear below shortly.");
       setPrompt("");
     } catch (e: any) {
       if (e?.data?.code === "NO_CREDITS") setStatus("out-of-credits");
@@ -71,94 +83,109 @@ function DashboardInner() {
 
   const free = me?.freeRemaining ?? 0;
   const credits = me?.credits ?? 0;
+  const placeholder = mode === "clip"
+    ? "Paste a YouTube link + a timestamp, e.g. https://youtu.be/… 2:30 to 3:15"
+    : mode === "edit"
+    ? "Describe the edit, e.g. caption it and make it vertical"
+    : "What should the reel be about? e.g. why UPI beat credit cards";
 
   return (
-    <div>
-      <header className="max-w-5xl mx-auto flex items-center justify-between px-6 py-5">
-        <Link to="/" className="font-display font-bold text-xl tracking-tight">lazyclip</Link>
-        <div className="flex items-center gap-4">
+    <>
+      <header className="relative z-10 mx-auto flex max-w-3xl items-center justify-between px-6 py-5">
+        <Link to="/" className="flex items-center gap-2">
+          <LazyClipLogo className="h-9 w-9 text-charcoal" />
+          <span className="font-display text-2xl font-bold tracking-tight">lazyclip</span>
+        </Link>
+        <div className="flex items-center gap-3 sm:gap-4">
           {me?.founding && (
-            <span className="hidden sm:flex items-center gap-1 text-xs font-mono px-2.5 py-1 rounded-full bg-electricBlue/10 text-electricBlue"><Star className="w-3 h-3" /> Founding Creator</span>
+            <span className="hidden rounded-full border border-electricBlue/20 bg-electricBlue/[0.06] px-3 py-1 font-mono text-[10px] font-bold uppercase tracking-widest text-electricBlue sm:inline">
+              Founding Creator
+            </span>
           )}
-          <span className="flex items-center gap-1.5 text-xs font-mono px-3 py-1.5 rounded-full border border-[#E5E5E2] bg-white">
-            <Zap className="w-3.5 h-3.5 text-electricBlue" />
+          <span className="rounded-full border border-charcoal/10 bg-white px-3 py-1.5 font-mono text-[10px] font-bold uppercase tracking-widest shadow-sm">
             {free > 0 ? `${free} free left` : `${credits} credits`}
           </span>
-          <Link to="/pricing" className="text-sm font-semibold hover:text-electricBlue">Buy credits</Link>
+          <Link to="/pricing" className="hidden text-sm font-semibold transition-colors hover:text-electricBlue sm:inline">Buy credits</Link>
           <UserButton afterSignOutUrl="/" />
         </div>
       </header>
 
-      <main className="max-w-2xl mx-auto px-6 pt-8 pb-24">
-        <h1 className="font-display font-extrabold text-3xl md:text-4xl tracking-tight">Create a reel</h1>
-        <p className="font-sans text-secondaryText mt-2">Pick a mode, describe what you want, and LazyClip does the rest.</p>
+      <main className="relative z-10 mx-auto max-w-3xl px-6 pb-24 pt-4">
+        <div className="font-mono text-[11px] uppercase tracking-[0.22em] text-electricBlue">Create</div>
+        <h1 className="mt-2 font-display text-4xl font-extrabold leading-[0.95] tracking-[-0.03em] md:text-5xl">
+          Make a reel<br />just by asking.
+        </h1>
+        <p className="mt-3 font-mono text-sm text-secondaryText">Pick a mode, describe it, and LazyClip does the rest.</p>
 
-        <div className="grid grid-cols-3 gap-2.5 mt-6">
+        {/* Mode picker — icon-free, source-labelled */}
+        <div className="mt-8 grid grid-cols-3 gap-2.5">
           {MODES.map((m) => {
-            const Icon = m.icon;
             const active = mode === m.id;
             return (
               <button key={m.id} onClick={() => setMode(m.id)}
-                className={`rounded-2xl border p-4 text-left transition-colors ${active ? "border-electricBlue bg-electricBlue/5" : "border-[#E5E5E2] bg-white hover:border-charcoal/30"}`}>
-                <Icon className={`w-5 h-5 ${active ? "text-electricBlue" : "text-charcoal"}`} />
-                <div className="font-display font-bold text-sm mt-2">{m.label}</div>
-                <div className="font-mono text-[10px] text-secondaryText mt-0.5">{m.hint}</div>
+                className={`rounded-2xl border p-4 text-left transition-colors ${active ? "border-electricBlue bg-electricBlue/[0.05]" : "border-[#E5E5E2] bg-white hover:border-charcoal/30"}`}>
+                <div className={`font-mono text-[10px] uppercase tracking-widest ${active ? "text-electricBlue" : "text-secondaryText"}`}>{m.tag}</div>
+                <div className="mt-2 font-display text-base font-bold">{m.label}</div>
+                <div className="mt-0.5 font-mono text-[10px] text-secondaryText">{m.hint}</div>
               </button>
             );
           })}
         </div>
 
-        <textarea value={prompt} onChange={(e) => setPrompt(e.target.value)} rows={4}
-          placeholder={mode === "clip" ? "Paste a YouTube link + a timestamp, e.g. https://youtu.be/… 2:30 to 3:15" : mode === "edit" ? "Describe the edit, e.g. caption it and make it vertical (attach clip in chat)" : "What should the reel be about? e.g. why UPI beat credit cards"}
-          className="w-full mt-4 rounded-2xl border border-[#E5E5E2] bg-white p-4 font-sans text-sm outline-none focus:border-electricBlue transition-colors resize-none" />
+        <textarea value={prompt} onChange={(e) => setPrompt(e.target.value)} rows={4} placeholder={placeholder}
+          className="mt-4 w-full resize-none rounded-2xl border border-[#E5E5E2] bg-white p-4 font-sans text-sm outline-none transition-colors focus:border-electricBlue" />
 
         <button onClick={generate} disabled={busy}
-          className="mt-3 w-full rounded-2xl bg-charcoal text-white py-4 font-semibold text-sm hover:bg-electricBlue transition-colors flex items-center justify-center gap-2 disabled:opacity-50">
-          {busy ? <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" /> : <><Video className="w-4 h-4" /> Generate reel {free > 0 ? "(free)" : "(1 credit)"}</>}
+          className="group mt-3 flex w-full items-center justify-center gap-2 rounded-2xl bg-charcoal py-4 text-sm font-semibold text-white transition-colors hover:bg-electricBlue disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-electricBlue focus-visible:ring-offset-2 focus-visible:ring-offset-warmBg">
+          {busy ? (
+            <span className="h-4 w-4 animate-spin rounded-full border-2 border-white/30 border-t-white" />
+          ) : (
+            <>Generate reel {free > 0 ? "(free)" : "(1 credit)"}<ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" /></>
+          )}
         </button>
 
         {status === "out-of-credits" ? (
           <div className="mt-4 rounded-2xl border border-[#E5E5E2] bg-white p-4 text-center">
-            <p className="font-sans text-sm text-charcoal">You're out of credits.</p>
-            <Link to="/pricing" className="inline-block mt-2 rounded-xl bg-electricBlue text-white px-5 py-2.5 font-semibold text-sm">Get more credits →</Link>
+            <p className="font-sans text-sm">You're out of credits.</p>
+            <Link to="/pricing" className="mt-2 inline-flex items-center gap-1.5 rounded-xl bg-electricBlue px-5 py-2.5 text-sm font-semibold text-white">
+              Get more credits <ArrowRight className="h-4 w-4" />
+            </Link>
           </div>
         ) : status ? (
-          <p className="mt-4 font-sans text-sm text-secondaryText text-center">{status}</p>
+          <p className="mt-4 text-center font-mono text-xs text-secondaryText">{status}</p>
         ) : null}
 
         {jobs && jobs.length > 0 && (
-          <div className="mt-10">
-            <h2 className="font-display font-bold text-lg">Your reels</h2>
-            <div className="mt-3 space-y-2.5">
+          <div className="mt-12">
+            <h2 className="font-mono text-[11px] uppercase tracking-[0.22em] text-secondaryText">Your reels</h2>
+            <div className="mt-4 space-y-2.5">
               {jobs.map((j) => (
-                <div
-                  key={j._id}
+                <div key={j._id}
                   onDoubleClick={() => j.status === "done" && navigate(`/studio/${j._id}`)}
                   title={j.status === "done" ? "Double-click to open in Studio" : undefined}
-                  className="flex items-center gap-4 rounded-2xl border border-[#E5E5E2] bg-white p-4"
-                >
+                  className="flex items-center gap-4 rounded-2xl border border-[#E5E5E2] bg-white p-4">
                   {j.status === "done" && j.resultUrl ? (
                     <video src={j.resultUrl} controls playsInline preload="metadata"
-                      className="w-[104px] aspect-[9/16] rounded-xl bg-black object-cover shrink-0" />
+                      className="aspect-[9/16] w-[104px] shrink-0 rounded-xl bg-black object-contain" />
                   ) : (
-                    <div className="w-[104px] aspect-[9/16] rounded-xl bg-warmBg border border-[#E5E5E2] flex items-center justify-center shrink-0">
+                    <div className="flex aspect-[9/16] w-[104px] shrink-0 items-center justify-center rounded-xl border border-[#E5E5E2] bg-warmBg">
                       {j.status === "failed"
-                        ? <span className="text-[10px] font-mono text-red-500">failed</span>
-                        : <span className="w-4 h-4 border-2 border-secondaryText/30 border-t-secondaryText rounded-full animate-spin" />}
+                        ? <span className="font-mono text-[10px] text-red-500">failed</span>
+                        : <span className="h-4 w-4 animate-spin rounded-full border-2 border-secondaryText/30 border-t-secondaryText" />}
                     </div>
                   )}
                   <div className="min-w-0 flex-1">
-                    <div className="font-mono text-[10px] uppercase tracking-wider text-secondaryText">{j.mode}</div>
-                    <div className="font-sans text-sm text-charcoal truncate">{j.prompt}</div>
+                    <div className="font-mono text-[10px] uppercase tracking-widest text-secondaryText">{j.mode}</div>
+                    <div className="truncate font-sans text-sm">{j.prompt}</div>
                     {j.status === "done" && j.resultUrl ? (
                       <button onClick={() => navigate(`/studio/${j._id}`)}
-                        className="mt-2 inline-flex items-center gap-1 rounded-xl bg-charcoal text-white px-3.5 py-1.5 text-xs font-semibold hover:bg-electricBlue transition-colors">
-                        Open in Studio →
+                        className="group mt-2 inline-flex items-center gap-1 rounded-xl bg-charcoal px-3.5 py-1.5 text-xs font-semibold text-white transition-colors hover:bg-electricBlue">
+                        Open in Studio <ArrowRight className="h-3.5 w-3.5 transition-transform group-hover:translate-x-0.5" />
                       </button>
                     ) : j.status === "failed" ? (
-                      <div className="mt-1 text-xs font-mono text-red-500">generation failed</div>
+                      <div className="mt-1 font-mono text-xs text-red-500">generation failed</div>
                     ) : (
-                      <div className="mt-1 text-xs font-mono text-secondaryText">{j.status}…</div>
+                      <div className="mt-1 font-mono text-xs text-secondaryText">{j.status}…</div>
                     )}
                   </div>
                 </div>
@@ -166,11 +193,7 @@ function DashboardInner() {
             </div>
           </div>
         )}
-
-        <p className="mt-8 font-mono text-[11px] text-secondaryText text-center">
-          Reels are generated by the LazyClip agent and delivered here when ready.
-        </p>
       </main>
-    </div>
+    </>
   );
 }

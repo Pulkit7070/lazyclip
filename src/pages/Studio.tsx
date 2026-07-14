@@ -2,7 +2,9 @@ import { useEffect, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { SignedIn, SignedOut, SignInButton } from "@clerk/clerk-react";
 import { useQuery, useMutation } from "convex/react";
-import { ArrowLeft, Wand2, Download, Sparkles } from "lucide-react";
+import { ArrowLeft, ArrowRight } from "lucide-react";
+import PremiumBackground from "../components/PremiumBackground";
+import LazyClipLogo from "../components/LazyClipLogo";
 import { api } from "../lib/convexApi";
 
 type Job =
@@ -16,17 +18,20 @@ const QUICK_EDITS = ["Make it square (1:1)", "Make it landscape (16:9)", "Add a 
 
 export default function Studio() {
   return (
-    <div className="relative min-h-screen overflow-hidden bg-warmBg text-charcoal">
-      {/* soft studio-light wash, kept subtle and on-brand */}
-      <div className="pointer-events-none absolute -top-40 left-1/2 h-[420px] w-[820px] -translate-x-1/2 rounded-full bg-electricBlue/[0.07] blur-3xl" />
+    <div className="relative min-h-screen overflow-x-hidden bg-warmBg text-charcoal selection:bg-electricBlue/15">
+      <div className="noise-overlay" />
+      <PremiumBackground />
       <SignedOut>
         <div className="relative z-10 flex min-h-screen flex-col items-center justify-center px-6 text-center">
-          <Link to="/" className="mb-6 font-display text-2xl font-bold tracking-tight">lazyclip</Link>
-          <h1 className="font-display text-3xl font-extrabold tracking-tight">Sign in to open the studio</h1>
-          <p className="mt-2 max-w-sm font-sans text-secondaryText">Your reels and edits live behind your account.</p>
+          <Link to="/" className="mb-8 flex items-center gap-2">
+            <LazyClipLogo className="h-10 w-10 text-charcoal" />
+            <span className="font-display text-2xl font-bold tracking-tight">lazyclip</span>
+          </Link>
+          <div className="font-mono text-[11px] uppercase tracking-[0.22em] text-electricBlue">Studio</div>
+          <h1 className="mt-2 font-display text-3xl font-extrabold tracking-[-0.03em]">Sign in to open the studio</h1>
           <SignInButton mode="modal">
-            <button className="mt-7 rounded-xl bg-charcoal px-7 py-3.5 text-sm font-semibold text-white transition-colors hover:bg-electricBlue focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-electricBlue focus-visible:ring-offset-2 focus-visible:ring-offset-warmBg">
-              Continue with Google
+            <button className="group mt-7 inline-flex items-center gap-2 rounded-2xl bg-charcoal px-7 py-3.5 text-sm font-semibold text-white transition-colors hover:bg-electricBlue focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-electricBlue focus-visible:ring-offset-2 focus-visible:ring-offset-warmBg">
+              Continue with Google <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" />
             </button>
           </SignInButton>
         </div>
@@ -52,12 +57,10 @@ function StudioInner() {
   const rendering = !!job && (job.status === "queued" || job.status === "processing");
   const ready = !!job && job.status === "done" && !!job.resultUrl;
 
-  // Capture the reel's original prompt as the page title (first load only).
   useEffect(() => {
     if (job && !title) setTitle(job.prompt);
   }, [job, title]);
 
-  // Announce edit results in the chat (only for edit jobs, which carry sourceUrl).
   useEffect(() => {
     if (!job || !job.sourceUrl) return;
     const key = job._id + ":" + job.status;
@@ -99,14 +102,16 @@ function StudioInner() {
         <Link to="/create" className="group inline-flex items-center gap-1.5 text-sm font-semibold text-secondaryText transition-colors hover:text-charcoal">
           <ArrowLeft className="h-4 w-4 transition-transform group-hover:-translate-x-0.5" /> Back to your reels
         </Link>
-        <Link to="/" className="font-display text-xl font-bold tracking-tight">lazyclip</Link>
+        <Link to="/" className="flex items-center gap-2">
+          <LazyClipLogo className="h-8 w-8 text-charcoal" />
+          <span className="font-display text-xl font-bold tracking-tight">lazyclip</span>
+        </Link>
       </header>
 
       <main className="relative z-10 mx-auto flex min-h-[calc(100vh-76px)] max-w-5xl flex-col justify-center px-6 pb-14">
-        {/* Titled header */}
         <div className="mb-7">
           <div className="font-mono text-[11px] uppercase tracking-[0.22em] text-electricBlue">Studio</div>
-          <h1 className="mt-1.5 font-display text-2xl font-extrabold leading-tight tracking-tight text-balance md:text-[28px]">
+          <h1 className="mt-1.5 text-balance font-display text-2xl font-extrabold leading-tight tracking-[-0.02em] md:text-[28px]">
             {title || "Your reel"}
           </h1>
         </div>
@@ -114,7 +119,7 @@ function StudioInner() {
         <div className="grid grid-cols-1 items-center gap-8 lg:grid-cols-[300px_minmax(0,1fr)] lg:gap-12">
           {/* Player */}
           <div className="flex flex-col items-center gap-4">
-            <div className="group relative">
+            <div className="relative">
               <div className="pointer-events-none absolute -inset-2.5 rounded-[2.2rem] bg-charcoal/10 blur-xl" />
               <div className="relative aspect-[9/16] w-[300px] max-w-full overflow-hidden rounded-[2rem] border-[7px] border-charcoal bg-black shadow-2xl">
                 {ready && job?.resultUrl ? (
@@ -137,29 +142,22 @@ function StudioInner() {
             </div>
             {ready && job?.resultUrl && (
               <a href={job.resultUrl} download
-                className="inline-flex items-center gap-1.5 rounded-xl border border-black/10 bg-white px-4 py-2 text-sm font-semibold shadow-sm transition-colors hover:border-charcoal/30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-electricBlue focus-visible:ring-offset-2 focus-visible:ring-offset-warmBg">
-                <Download className="h-4 w-4" /> Download
+                className="rounded-xl border border-charcoal/10 bg-white px-4 py-2 text-sm font-semibold shadow-sm transition-colors hover:border-charcoal/30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-electricBlue focus-visible:ring-offset-2 focus-visible:ring-offset-warmBg">
+                Download
               </a>
             )}
           </div>
 
           {/* Edit console */}
           <div className="flex h-[547px] flex-col rounded-3xl border border-black/[0.07] bg-white p-6 shadow-sm">
-            <div className="flex items-center gap-3">
-              <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-electricBlue/10 text-electricBlue">
-                <Sparkles className="h-5 w-5" />
-              </span>
-              <div>
-                <h2 className="font-display text-lg font-bold leading-none">Edit with AI</h2>
-                <p className="mt-1 font-mono text-[11px] text-secondaryText">re-cut with ffmpeg · plays here</p>
-              </div>
-            </div>
+            <h2 className="font-display text-lg font-bold leading-none">Edit with AI</h2>
+            <p className="mt-1.5 font-mono text-[11px] text-secondaryText">re-cut with ffmpeg · plays here</p>
 
             {/* Quick edits */}
             <div className="mt-5 flex flex-wrap gap-2">
               {QUICK_EDITS.map((q) => (
                 <button key={q} onClick={() => send(q)} disabled={!ready || busy || rendering}
-                  className="rounded-full border border-black/10 bg-warmBg px-3.5 py-1.5 text-xs font-medium transition-colors hover:border-electricBlue hover:text-electricBlue disabled:cursor-not-allowed disabled:opacity-40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-electricBlue">
+                  className="rounded-full border border-[#E5E5E2] bg-warmBg px-3.5 py-1.5 text-xs font-medium transition-colors hover:border-electricBlue hover:text-electricBlue disabled:cursor-not-allowed disabled:opacity-40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-electricBlue">
                   {q}
                 </button>
               ))}
@@ -194,10 +192,10 @@ function StudioInner() {
               <input value={instruction} onChange={(e) => setInstruction(e.target.value)}
                 placeholder={ready ? "Describe an edit…" : rendering ? "Rendering…" : "Waiting for the reel…"}
                 disabled={!ready || busy || rendering}
-                className="flex-1 rounded-2xl border border-black/10 bg-warmBg px-4 py-3 font-sans text-sm outline-none transition-colors focus:border-electricBlue disabled:opacity-50" />
+                className="flex-1 rounded-2xl border border-[#E5E5E2] bg-warmBg px-4 py-3 font-sans text-sm outline-none transition-colors focus:border-electricBlue disabled:opacity-50" />
               <button type="submit" disabled={!ready || busy || rendering || !instruction.trim()}
-                className="flex items-center gap-1.5 rounded-2xl bg-charcoal px-4 py-3 text-sm font-semibold text-white transition-colors hover:bg-electricBlue disabled:cursor-not-allowed disabled:opacity-40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-electricBlue focus-visible:ring-offset-2 focus-visible:ring-offset-white">
-                <Wand2 className="h-4 w-4" /> Edit
+                className="group flex items-center gap-1.5 rounded-2xl bg-charcoal px-4 py-3 text-sm font-semibold text-white transition-colors hover:bg-electricBlue disabled:cursor-not-allowed disabled:opacity-40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-electricBlue focus-visible:ring-offset-2 focus-visible:ring-offset-white">
+                Edit <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-0.5" />
               </button>
             </form>
             {edits > 0 && (
