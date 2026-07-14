@@ -104,6 +104,27 @@ describe('media-core (real ffmpeg)', () => {
     await rm((globalThis as any).__last, { recursive: true, force: true });
   }, 30000);
 
+  it('title -> valid video (hook card or passthrough)', async () => {
+    const { outputPath } = await run({ op: 'title', text: 'why he got fired' });
+    expect((await ffprobe(outputPath)).hasVideo).toBe(true);
+    await rm((globalThis as any).__last, { recursive: true, force: true });
+  }, 30000);
+
+  it('zoom -> valid video, duration preserved', async () => {
+    const before = await ffprobe(SAMPLE);
+    const { outputPath } = await run({ op: 'zoom', windows: [{ at: 2, dur: 2 }] });
+    const p = await ffprobe(outputPath);
+    expect(p.hasVideo).toBe(true);
+    expect(Math.abs(p.durationSec - before.durationSec)).toBeLessThan(1.5);
+    await rm((globalThis as any).__last, { recursive: true, force: true });
+  }, 60000);
+
+  it('gifs offline (no GIPHY key) -> passthrough', async () => {
+    const { outputPath } = await run({ op: 'gifs', items: [{ at: 2, dur: 3, query: 'mind blown' }] });
+    expect((await ffprobe(outputPath)).hasVideo).toBe(true);
+    await rm((globalThis as any).__last, { recursive: true, force: true });
+  }, 30000);
+
   it('broll -> 1080x1920 background video', async () => {
     const { outputPath } = await run({ op: 'broll', keywords: ['upi', 'india'] }, '');
     const p = await ffprobe(outputPath);

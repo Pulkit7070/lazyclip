@@ -15,10 +15,15 @@ export type Op =
   | { op: 'thumbnail'; at: string }
   | { op: 'voiceover'; voiceId: string; script: string }
   | { op: 'broll';     keywords: string[]; durationSec?: number }
-  | { op: 'cutaways';  segments: BrollSegment[] };   // b-roll cutaways over an A-roll clip
+  | { op: 'cutaways';  segments: BrollSegment[] }    // b-roll cutaways over an A-roll clip
+  | { op: 'title';     text: string; durationSec?: number }   // hook card over the first seconds
+  | { op: 'gifs';      items: GifOverlay[] }         // GIPHY sticker overlays
+  | { op: 'zoom';      windows: ZoomWindow[] };      // punch-in zoom windows
 
 // b-roll cutaway window: `at` seconds into the clip, `dur` seconds long
 export interface BrollSegment { at: number; dur: number; keywords: string[] }
+export interface GifOverlay   { at: number; dur: number; query: string; pos?: 'tc' | 'tr' | 'tl' }
+export interface ZoomWindow   { at: number; dur: number }
 
 export type OpName = Op['op'];
 

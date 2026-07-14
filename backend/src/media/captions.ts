@@ -26,16 +26,31 @@ const STYLES: Record<string, string> = {
   clean:   'Style: Default,Arial,46,&H00FFFFFF,&H00000000,0,0,0,0,100,100,0,0,1,2,0,2,40,40,90,1',
 };
 
+// CapCut-style pop-in: fade in fast + overshoot scale then settle. Pure libass \t transforms —
+// zero render cost vs. plain cues, no Remotion needed.
+const POP = '\\fad(100,60)\\fscx80\\fscy80\\t(0,110,\\fscx112\\fscy112)\\t(110,220,\\fscx100\\fscy100)';
+
 export function toAss(cues: { start: number; end: number; text: string }[], style: 'karaoke' | 'meme' | 'clean' = 'karaoke'): string {
   const header =
     '[Script Info]\nScriptType: v4.00+\nPlayResX: 1080\nPlayResY: 1920\n\n' +
     '[V4+ Styles]\nFormat: Name,Fontname,Fontsize,PrimaryColour,OutlineColour,Bold,Italic,Underline,StrikeOut,ScaleX,ScaleY,Spacing,Angle,BorderStyle,Outline,Shadow,Alignment,MarginL,MarginR,MarginV,Encoding\n' +
     (STYLES[style] ?? STYLES.karaoke) + '\n\n' +
     '[Events]\nFormat: Layer,Start,End,Style,Name,MarginL,MarginR,MarginV,Effect,Text\n';
+  const anim = style === 'clean' ? '' : `{${POP}}`;   // clean stays static; karaoke/meme pop in
   const events = cues
-    .map((c) => `Dialogue: 0,${ts(c.start)},${ts(c.end)},Default,,0,0,0,,${c.text.replace(/\n/g, ' ')}`)
+    .map((c) => `Dialogue: 0,${ts(c.start)},${ts(c.end)},Default,,0,0,0,,${anim}${c.text.replace(/\n/g, ' ')}`)
     .join('\n');
   return header + events + '\n';
+}
+
+// Hook title card: big bold line at the top for the first seconds, pop + fade out.
+export function titleAss(text: string, durationSec: number): string {
+  const clean = text.replace(/[\n{}]/g, ' ').trim();
+  return '[Script Info]\nScriptType: v4.00+\nPlayResX: 1080\nPlayResY: 1920\n\n' +
+    '[V4+ Styles]\nFormat: Name,Fontname,Fontsize,PrimaryColour,OutlineColour,Bold,Italic,Underline,StrikeOut,ScaleX,ScaleY,Spacing,Angle,BorderStyle,Outline,Shadow,Alignment,MarginL,MarginR,MarginV,Encoding\n' +
+    'Style: Hook,Arial,72,&H0000FFFF,&H00000000,-1,0,0,0,100,100,0,0,1,5,0,8,60,60,140,1\n\n' +
+    '[Events]\nFormat: Layer,Start,End,Style,Name,MarginL,MarginR,MarginV,Effect,Text\n' +
+    `Dialogue: 1,${ts(0)},${ts(durationSec)},Hook,,0,0,0,,{\\fad(150,250)${POP.replace('\\fad(100,60)', '')}}${clean.toUpperCase()}\n`;
 }
 
 export function toSrt(cues: { start: number; end: number; text: string }[]): string {

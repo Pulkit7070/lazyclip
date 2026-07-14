@@ -7,12 +7,14 @@ import { mkdtemp, readdir, readFile, rm } from 'node:fs/promises';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 
-import type { BrollSegment } from './types.js';
+import type { BrollSegment, GifOverlay, ZoomWindow } from './types.js';
 
 export interface Moment {
   start: string; end: string; hook: string;
   reframe?: 'crop' | 'fit';        // crop = subject-focused fill, fit = blur-pad (wide shots, on-screen text)
   broll?: BrollSegment[];          // cutaway windows, `at` seconds RELATIVE to the moment start
+  gifs?: GifOverlay[];             // reaction sticker windows, relative to the moment start
+  zooms?: ZoomWindow[];            // punch-in zoom windows, relative to the moment start
 }
 
 // pure: validate one LLM moment -> Moment (broll times converted from absolute video seconds
@@ -25,10 +27,21 @@ export function toMoment(x: any, mmssFn: (s: number) => string): Moment | null {
     .map((b: any) => ({ at: b.at_sec - x.start_sec, dur: b.dur_sec, keywords: b.keywords.map(String).slice(0, 4) }))
     .filter((b: BrollSegment) => b.at >= 0 && b.at < endSec - x.start_sec)
     .slice(0, 2);
+  const clipLen = endSec - x.start_sec;
+  const rel = (arr: any, mapFn: (b: any) => any) => (Array.isArray(arr) ? arr : [])
+    .filter((b: any) => Number.isFinite(b?.at_sec) && Number.isFinite(b?.dur_sec))
+    .map(mapFn)
+    .filter((b: any) => b.at >= 0 && b.at < clipLen);
+  const gifs: GifOverlay[] = rel(x.gifs, (g: any) => ({
+    at: g.at_sec - x.start_sec, dur: g.dur_sec, query: String(g.query ?? '').trim(),
+  })).filter((g: GifOverlay) => g.query).slice(0, 1);
+  const zooms: ZoomWindow[] = rel(x.zooms, (z: any) => ({ at: z.at_sec - x.start_sec, dur: z.dur_sec })).slice(0, 2);
   return {
     start: mmssFn(x.start_sec), end: mmssFn(endSec), hook: String(x.hook ?? ''),
     reframe: x.reframe === 'fit' ? 'fit' : x.reframe === 'crop' ? 'crop' : undefined,
     broll: broll.length ? broll : undefined,
+    gifs: gifs.length ? gifs : undefined,
+    zooms: zooms.length ? zooms : undefined,
   };
 }
 
@@ -98,8 +111,12 @@ export async function pickMoments(url: string, count = 3): Promise<Moment[]> {
           `(on-screen text, gameplay, multiple people spread out).\n` +
           `- "broll": 0-2 cutaway windows where stock footage of what is being SAID would boost retention ` +
           `(never cover the punchline; 2-4s each). Use absolute video seconds and 2-4 concrete stock-search keywords.\n` +
+          `- "gifs": 0-1 reaction-sticker moments (a joke landing, a shocking claim) with a short GIPHY ` +
+          `search query like "mind blown" or "laughing".\n` +
+          `- "zooms": 0-2 punch-in moments on the most emphatic words (1-2s each).\n` +
           `Reply as JSON: {"moments":[{"start_sec":int,"end_sec":int,"hook":"<=6 word overlay",` +
-          `"reframe":"crop"|"fit","broll":[{"at_sec":int,"dur_sec":int,"keywords":["..."]}]}]}\n\n` +
+          `"reframe":"crop"|"fit","broll":[{"at_sec":int,"dur_sec":int,"keywords":["..."]}],` +
+          `"gifs":[{"at_sec":int,"dur_sec":int,"query":"..."}],"zooms":[{"at_sec":int,"dur_sec":int}]}]}\n\n` +
           lines.join('\n').slice(0, 24_000),
       }],
     }),

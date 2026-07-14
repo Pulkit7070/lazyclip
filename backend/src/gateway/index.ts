@@ -2,10 +2,16 @@
 // Flow: free-tier cap -> route -> (YouTube ownership confirm) -> enqueue -> reply with file.
 import { route, ClarifyError, ImpossibleError } from '../router/index.js';
 import { cleanupOutput } from '../queue/index.js';
-import type { JobSpec, JobResult, Op, Platform, BrollSegment } from '../types.js';
+import type { JobSpec, JobResult, Op, Platform, BrollSegment, GifOverlay, ZoomWindow } from '../types.js';
 
-// per-clip plan from auto-moments (LLM): how to reframe + where b-roll cutaways go
-export interface EditPlan { reframe?: 'crop' | 'fit'; broll?: BrollSegment[] }
+// per-clip plan from auto-moments (LLM): reframe + b-roll cutaways + hook card + stickers + zooms
+export interface EditPlan {
+  reframe?: 'crop' | 'fit';
+  broll?: BrollSegment[];
+  hook?: string;
+  gifs?: GifOverlay[];
+  zooms?: ZoomWindow[];
+}
 
 export interface Incoming {
   userId: string;
@@ -17,15 +23,21 @@ export interface Incoming {
   editPlan?: EditPlan;            // set by the auto-moments flow
 }
 
-// pure: fold an EditPlan into the routed ops — reframe mode on the format op (explicit user
-// intent wins), cutaways inserted right after format so b-roll lands on the final canvas
-// but UNDER the captions burned later
+// pure: fold an EditPlan into the routed ops. Order matters:
+//   format -> zoom (A-roll emphasis) -> cutaways (b-roll over the final canvas) -> title
+//   -> ... captions ... -> gifs (stickers ABOVE the captions) -> watermark
+// Reframe mode is set on the format op only when the user didn't ask for one explicitly.
 export function applyEditPlan(job: JobSpec, plan: EditPlan): JobSpec {
   const ops: Op[] = [];
   for (const o of job.ops) {
     if (o.op === 'format') {
       ops.push(plan.reframe && !o.mode ? { ...o, mode: plan.reframe } : o);
+      if (plan.zooms?.length) ops.push({ op: 'zoom', windows: plan.zooms });
       if (plan.broll?.length) ops.push({ op: 'cutaways', segments: plan.broll });
+      if (plan.hook?.trim()) ops.push({ op: 'title', text: plan.hook.trim() });
+    } else if (o.op === 'captions') {
+      ops.push(o);
+      if (plan.gifs?.length) ops.push({ op: 'gifs', items: plan.gifs });
     } else ops.push(o);
   }
   return { ...job, ops };

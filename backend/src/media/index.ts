@@ -6,9 +6,10 @@ import { writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import type { MediaCore, Op, JobCtx } from '../types.js';
 import { ff, ffprobe, hasFilter, fontFile } from './ffmpeg.js';
-import { toAss } from './captions.js';
+import { toAss, titleAss } from './captions.js';
 import { fetchStockBroll } from './broll.js';
-import { formatFilter, cutawayGraph, clampSegments } from './filters.js';
+import { fetchSticker } from './gifs.js';
+import { formatFilter, cutawayGraph, clampSegments, zoomFilter, clampZooms, gifGraph, clampGifs } from './filters.js';
 
 const out = (ctx: JobCtx, op: string, ext = 'mp4') =>
   join(ctx.tmpDir, `${op}-${Math.random().toString(36).slice(2)}.${ext}`);
@@ -25,7 +26,7 @@ export const mediaCore: MediaCore = {
     const sig = ctx.signal;
     // probe the input once so ops can adapt to missing audio/video streams
     const meta = input ? await ffprobe(input).catch(() => null) : null;
-    const needsVideo = ['format', 'watermark', 'captions', 'sticker', 'thumbnail', 'cutaways'].includes(op.op);
+    const needsVideo = ['format', 'watermark', 'captions', 'sticker', 'thumbnail', 'cutaways', 'title', 'gifs', 'zoom'].includes(op.op);
     if (meta && needsVideo && !meta.hasVideo) throw new MediaError('this file has no video to edit');
     switch (op.op) {
       case 'trim':
@@ -114,6 +115,50 @@ export const mediaCore: MediaCore = {
           // limited build: caption bar placeholder so the pipeline still yields valid video
           await ff([...inp(input), '-vf', 'drawbox=x=0:y=ih-140:w=iw:h=140:color=black@0.35:t=fill', ...aCopy, o], sig);
         }
+        return { outputPath: o };
+      }
+      case 'title': {
+        // hook card: big pop-in line at the top for the first seconds (ASS on full builds,
+        // drawtext on builds without libass, passthrough on neither)
+        const o = out(ctx, 'title');
+        const aCopy = meta?.hasAudio ? ['-c:a', 'copy'] : ['-an'];
+        const dur = Math.min(op.durationSec ?? 3, Math.max(1.5, (meta?.durationSec ?? 3) * 0.25));
+        if (!op.text.trim()) { await ff([...inp(input), '-c', 'copy', o], sig); return { outputPath: o }; }
+        if (await hasFilter('subtitles')) {
+          const ass = join(ctx.tmpDir, `title-${Math.random().toString(36).slice(2)}.ass`);
+          await writeFile(ass, titleAss(op.text, dur));
+          await ff([...inp(input), '-vf', `subtitles=${ass}`, ...aCopy, o], sig);
+        } else if (await hasFilter('drawtext')) {
+          await ff([...inp(input), '-vf',
+            `drawtext=fontfile=${fontFile()}:text='${op.text.replace(/[':\\]/g, '')}':fontcolor=yellow:fontsize=64:` +
+            `x=(w-tw)/2:y=140:borderw=4:bordercolor=black:enable='lt(t,${dur.toFixed(2)})'`, ...aCopy, o], sig);
+        } else {
+          await ff([...inp(input), '-c', 'copy', o], sig);
+        }
+        return { outputPath: o };
+      }
+      case 'zoom': {
+        // punch-in emphasis: 1.08x jump-cut zoom during each window
+        const o = out(ctx, 'zoom');
+        const aCopy = meta?.hasAudio ? ['-c:a', 'copy'] : ['-an'];
+        const windows = clampZooms(op.windows, meta?.durationSec ?? 0);
+        if (!windows.length) { await ff([...inp(input), '-c', 'copy', o], sig); return { outputPath: o }; }
+        await ff([...inp(input), '-vf',
+          zoomFilter(windows, meta?.width || 1080, meta?.height || 1920), ...aCopy, o], sig);
+        return { outputPath: o };
+      }
+      case 'gifs': {
+        // GIPHY reaction stickers overlaid during their windows; any miss -> skipped
+        const items = clampGifs(op.items, meta?.durationSec ?? 0);
+        const fetched = await Promise.all(items.map(async (g) => ({ g, path: await fetchSticker(g.query) })));
+        const usable = fetched.filter((f): f is { g: typeof f.g; path: string } => !!f.path);
+        const o = out(ctx, 'gifs');
+        if (!usable.length) { await ff([...inp(input), '-c', 'copy', o], sig); return { outputPath: o }; }
+        const gifInputs = usable.flatMap((f) => ['-ignore_loop', '0', '-i', f.path]);
+        const aMap = meta?.hasAudio ? ['-map', '0:a', '-c:a', 'copy'] : ['-an'];
+        await ff([...inp(input), ...gifInputs, '-filter_complex',
+          gifGraph(usable.map((f) => f.g), meta?.width || 1080, meta?.height || 1920),
+          '-map', '[vout]', ...aMap, o], sig);
         return { outputPath: o };
       }
       case 'sticker': {
