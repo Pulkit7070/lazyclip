@@ -1,168 +1,119 @@
-# Reely
+<div align="center">
 
-Reely is an open-source video editing system controlled through natural-language instructions. It accepts a prompt, an uploaded video, or a YouTube segment and returns a processed vertical video with captions, formatting, and optional voice-over.
+# 🎬 LazyClip
 
-The repository contains two applications:
+### Your video editor lives in chat.
 
-- `backend/` — the TypeScript media-processing service and chat agent
-- repository root — the React product site and interactive editor demonstration
+Turn a prompt, a raw clip, or a YouTube link into a captioned vertical short — just by asking.
+No CapCut, no timeline, no converter sites.
 
-## Architecture
+[![live](https://img.shields.io/badge/live-lazyclip.buzz-2563EB)](https://lazyclip.buzz)
+[![telegram](https://img.shields.io/badge/try%20it-%40Lazy__clip__bot-229ED9?logo=telegram&logoColor=white)](https://t.me/Lazy_clip_bot)
+![built with](https://img.shields.io/badge/built%20with-Codex%20%2B%20Claude%20Code-black)
+![license](https://img.shields.io/badge/license-MIT-blue)
+
+</div>
+
+![LazyClip landing](docs/screenshots/shot-landing.png)
+
+---
+
+## The idea
+
+Editing a short-form video is death by a thousand tabs: CapCut to trim, one site to convert, another to caption, a third to make a sticker — minutes of uploading and downloading for a 15-second clip. Meanwhile the hardest part isn't even the editing; it's **knowing what to make.**
+
+**LazyClip collapses all of it into a chat.** You talk to it like you'd talk to an editor friend:
+
+> *"make a 15s reel on why UPI beat credit cards"*
+> *"clip 2:30–3:15 from this YouTube link and caption it"*
+> *"make this vertical with a watermark"*
+
+…and it hands back a finished, captioned, vertical video in seconds. It lives where you already are — **Telegram** and the **web** — so there's nothing to install.
+
+Why it works: it removes *both* points of friction at once — the blank page (it brainstorms and scripts for you) **and** the busywork (it cuts, captions, and formats for you). One surface, one message, one reel out.
+
+## See it
+
+| Landing | Pricing |
+|---|---|
+| Chat-native hero + live demo | Credit-based, start free |
+
+![Pricing](docs/screenshots/shot-pricing.png)
+
+The site is live at **[lazyclip.buzz](https://lazyclip.buzz)**, and the bot is live at **[@Lazy_clip_bot](https://t.me/Lazy_clip_bot)** — send it a YouTube link and try it right now.
+
+## Three modes, one engine
+
+Every mode runs through the same pipeline — the words are generated, and ffmpeg does the cutting.
+
+| Mode | You send | You get |
+|------|----------|---------|
+| 🧠 **Generate** | a topic | a brainstormed, scripted, voiced **14–20s reel** with captions |
+| ✂️ **Edit** | a clip + an instruction | trimmed, captioned, reformatted, or converted output |
+| 📎 **Clip** | a YouTube link + timestamps | only that segment, captioned and vertical |
+
+## How it works
 
 ```mermaid
 flowchart LR
-    subgraph Inputs
-        A[Text prompt]
-        B[Video upload]
-        C[YouTube link]
-    end
-
-    subgraph Orchestration
-        D[Hermes gateway]
-        E[Intent router]
-        F[Validated JobSpec]
-        G[Bounded job queue]
-    end
-
-    subgraph Processing
-        H[Ingest and validation]
-        I[Transcription and research]
-        J[Script and caption generation]
-        K[FFmpeg operation pipeline]
-    end
-
-    subgraph Delivery
-        L[Output validation]
-        M[Watermark and usage policy]
-        N[Vertical video]
-    end
-
-    A --> D
-    B --> D
-    C --> D
-    D --> E --> F --> G
-    G --> H --> I --> J --> K
-    K --> L --> M --> N
+    U([chat: idea / clip / YouTube link]) --> G[Chat + web gateway]
+    G --> R[Intent router → JobSpec]
+    R --> Q[Bounded job queue]
+    Q --> P[Prepare: ingest · transcribe · research · script]
+    P --> F[FFmpeg pipeline: cut · caption · format]
+    F --> V[Validate + watermark]
+    V --> O([captioned vertical short])
+    O --> U
 ```
 
-The gateway converts a conversational request into a typed `JobSpec`. The queue applies concurrency and resource limits before the job reaches the media pipeline. FFmpeg performs all media operations; generated text, captions, transcription, and research are prepared before rendering. The finished file is validated before it is returned to the user.
+A conversational request is turned into a typed **JobSpec**; a bounded queue applies concurrency and resource limits; ffmpeg performs every media operation; the output is validated before delivery. YouTube ingestion downloads only the requested segment, and user text is never executed as a shell command.
 
-### Request lifecycle
+## Built with Codex
 
-```mermaid
-sequenceDiagram
-    actor User
-    participant Gateway as Hermes gateway
-    participant Router as Intent router
-    participant Queue as Job queue
-    participant Services as Content services
-    participant Media as FFmpeg pipeline
+LazyClip went from **idea → live product on its own domain** using an **agent-driven workflow** — I drove [OpenAI **Codex**](https://openai.com/codex/) (alongside Claude Code) as the primary builder rather than hand-writing each file.
 
-    User->>Gateway: Prompt, upload, or link
-    Gateway->>Router: Parse request
-    Router->>Queue: Submit validated JobSpec
-    Queue->>Services: Prepare transcript, script, and captions
-    Services->>Media: Execute media operations
-    Media-->>Queue: Validated output file
-    Queue-->>Gateway: Delivery result
-    Gateway-->>User: Finished video
-```
+How I used Codex:
 
-## Product workflow
+- **Scaffolding & features** — Codex generated the Vite/React marketing site, the interactive iPhone demo, and the dashboard/pricing flows from high-level product prompts, iterating on design and copy in tight loops.
+- **The media agent** — Codex built the TypeScript pipeline (`backend/`): the ffmpeg operation library, yt-dlp segment ingestion, Whisper transcription, script/caption generation, the bounded job queue, and the Telegram gateway — mapping natural-language requests to a **fixed, validated operation schema** so nothing user-typed ever hits a shell.
+- **Wiring the platform** — Convex (data, waitlist, credits, generation queue), Clerk (Google auth), Resend (welcome email), PostHog (analytics), and Vercel (deploy) were integrated agentically, one concern at a time.
+- **Parallel agents** — the frontend, backend agent, and infra were built in **parallel Codex sessions**, each committing to the same repo, which is why the whole thing came together in a single build sprint.
 
-Reely supports three workflows through the same processing pipeline.
-
-| Workflow | Input | Processing | Output |
-| --- | --- | --- | --- |
-| Generate | Topic or brief | Research, script, voice-over, captions, and composition | 14–20 second vertical video |
-| Edit | Uploaded footage and an instruction | Transcription, trimming, captions, formatting, or conversion | Edited video, audio file, thumbnail, or GIF |
-| Clip | YouTube URL and time range | Segment download, transcription, captions, and vertical formatting | Captioned short-form video |
-
-## Technical design
-
-The backend is designed to run predictably on a modest CPU-only host.
-
-- All natural-language requests map to a fixed operation schema; user text is never executed as a shell command.
-- Global concurrency is bounded and each user can run only one active job at a time.
-- Uploads are limited by file size, duration, and resolution.
-- Every job receives an isolated temporary directory that is removed after delivery.
-- YouTube ingestion downloads only the requested segment.
-- FFmpeg processes are time-limited and terminated when a job exceeds its budget.
-- External integrations have local fallbacks so the core pipeline can run without API keys.
-
-The test suite covers routing, queue behaviour, input validation, media operations, failure handling, and end-to-end generation. See [docs/TESTS.md](./docs/TESTS.md) for the detailed test plan.
+The result is a codebase designed to run predictably on a modest CPU-only host, with local fallbacks for every external integration so the core pipeline works without any API keys.
 
 ## Technology
 
 | Component | Responsibility |
-| --- | --- |
-| Hermes | Agent runtime and chat gateway |
-| TypeScript | Typed orchestration and service contracts |
-| FFmpeg | Video, audio, caption, format, and image processing |
-| yt-dlp | Time-bounded YouTube ingestion |
-| Whisper | Speech transcription |
-| ElevenLabs | Generated voice-over |
-| Linkup | Source-backed research for generated scripts |
-| Convex | User, job, and usage data |
-| React and Vite | Product site and interactive demonstration |
+|---|---|
+| **React + Vite + Tailwind** | Marketing site, dashboard, pricing |
+| **TypeScript** | Typed orchestration + service contracts |
+| **FFmpeg / yt-dlp / Whisper** | Media ops, segment ingest, transcription |
+| **Convex** | Waitlist, users, credits, generation queue |
+| **Clerk** | Google sign-in |
+| **ElevenLabs / Linkup** | Voice-over + source-backed research |
+| **Resend / PostHog** | Welcome email + product analytics |
+| **Telegram + Google Cloud** | Chat gateway + rendered-reel storage |
 
-## Repository structure
-
-```text
-.
-├── backend/
-│   ├── src/
-│   │   ├── content/       Script and caption generation
-│   │   ├── data/          Persistence and usage policy
-│   │   ├── gateway/       Chat integration
-│   │   ├── ingest/        Upload and YouTube validation
-│   │   ├── media/         FFmpeg operation library
-│   │   ├── queue/         Bounded job execution
-│   │   ├── router/        Natural language to JobSpec
-│   │   ├── search/        Research integration
-│   │   └── transcribe/    Speech-to-text integration
-│   └── fixtures/          Media test fixtures
-├── docs/                  Architecture, setup, test, and demo notes
-├── src/                   React product site
-└── convex/                Application data functions
-```
-
-## Running the project
-
-### Product site
+## Run it locally
 
 ```bash
+# product site
 npm install
-npm run dev
-```
+npm run dev            # http://localhost:5173
 
-### Media service
-
-```bash
+# media agent
 cd backend
 npm install
-npm run typecheck
 npm test
-```
-
-Run a workflow from the command line:
-
-```bash
-npm run reely -- "why UPI adoption grew in India"
-npm run reely -- "make it vertical with a watermark" fixtures/sample.mp4
 npm run reely -- "clip https://youtu.be/aqz-KE-bpKQ 0:02 to 0:06"
 ```
 
-Optional integrations and environment variables are documented in [docs/SETUP.md](./docs/SETUP.md).
+Copy `.env.example` → `.env.local` (root) and `backend/.env.example` → `backend/.env`, then fill in keys. Every integration has a local fallback, so the pipeline runs even without them.
 
 ## Documentation
 
-- [Architecture](./docs/ARCHITECTURE.md)
-- [Setup](./docs/SETUP.md)
-- [Testing](./docs/TESTS.md)
-- [Demo guide](./docs/DEMO.md)
-- [Implementation plan](./docs/PLAN.md)
+- [Architecture](./docs/ARCHITECTURE.md) · [Setup](./docs/SETUP.md) · [Testing](./docs/TESTS.md) · [Demo](./docs/DEMO.md) · [Plan](./docs/PLAN.md)
 
 ## License
 
-Reely is available under the [MIT License](./backend/LICENSE).
+MIT — see [LICENSE](./backend/LICENSE).
