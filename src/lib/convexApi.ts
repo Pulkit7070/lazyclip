@@ -21,6 +21,8 @@ export const api = {
   generate: {
     requestGeneration: makeFunctionReference<"mutation">("generate:requestGeneration"),
     myJobs: makeFunctionReference<"query">("generate:myJobs"),
+    getJob: makeFunctionReference<"query">("generate:getJob"),
+    requestEdit: makeFunctionReference<"mutation">("generate:requestEdit"),
   },
 };
 

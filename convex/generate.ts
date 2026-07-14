@@ -67,6 +67,57 @@ export const myJobs = query({
   },
 });
 
+// Public: a single job by id (the studio viewer polls this). Owner-scoped.
+export const getJob = query({
+  args: { jobId: v.id("genJobs") },
+  handler: async (ctx: any, args: any) => {
+    const id = await ctx.auth.getUserIdentity();
+    if (!id) throw new ConvexError({ code: "UNAUTHENTICATED" });
+    const job = await ctx.db.get(args.jobId);
+    if (!job || job.userId !== id.subject) return null;
+    return job;
+  },
+});
+
+// Public: edit an already-generated reel with a natural-language instruction.
+// Spends a credit (free quota first, then paid), then enqueues an edit job that
+// references the source reel's URL. The VM poller downloads it and runs ffmpeg.
+export const requestEdit = mutation({
+  args: { sourceUrl: v.string(), instruction: v.string() },
+  handler: async (ctx: any, args: any) => {
+    const id = await ctx.auth.getUserIdentity();
+    if (!id) throw new ConvexError({ code: "UNAUTHENTICATED" });
+
+    const user = await ctx.db
+      .query("users")
+      .withIndex("by_token", (q: any) => q.eq("tokenIdentifier", id.subject))
+      .unique();
+    if (!user) throw new ConvexError({ code: "NO_USER" });
+
+    if (user.freeUsed < FREE_LIMIT) {
+      await ctx.db.patch(user._id, { freeUsed: user.freeUsed + 1 });
+    } else if (user.credits > 0) {
+      await ctx.db.patch(user._id, { credits: user.credits - 1 });
+    } else {
+      throw new ConvexError({
+        code: "NO_CREDITS",
+        message: "Out of credits — buy a pack to keep editing.",
+      });
+    }
+
+    const jobId = await ctx.db.insert("genJobs", {
+      userId: id.subject,
+      mode: "edit",
+      prompt: args.instruction,
+      sourceUrl: args.sourceUrl,
+      status: "queued",
+      createdAt: Date.now(),
+    });
+
+    return { jobId };
+  },
+});
+
 // Internal: the agent claims the oldest queued job and marks it processing.
 // Returns null when the queue is empty.
 export const claimNextJob = internalMutation({
@@ -84,6 +135,7 @@ export const claimNextJob = internalMutation({
       userId: job.userId,
       mode: job.mode,
       prompt: job.prompt,
+      sourceUrl: job.sourceUrl ?? null,
     };
   },
 });

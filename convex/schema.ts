@@ -40,6 +40,7 @@ export default defineSchema({
     mode: v.string(),
     prompt: v.string(),
     status: v.string(), // queued | processing | done | failed
+    sourceUrl: v.optional(v.string()), // set for edit jobs: the reel being edited
     resultUrl: v.optional(v.string()),
     error: v.optional(v.string()),
     createdAt: v.number(),
