@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { SignedIn, SignedOut, SignInButton, UserButton, useUser } from "@clerk/clerk-react";
 import { useMutation, useQuery } from "convex/react";
 import { Zap, Sparkles, Video, Scissors, Film, Star } from "lucide-react";
@@ -40,6 +40,7 @@ function SignInGate() {
 type Me = { credits: number; freeRemaining: number; freeLimit: number; founding: boolean; canGenerate: boolean } | null | undefined;
 
 function DashboardInner() {
+  const navigate = useNavigate();
   const { user } = useUser();
   const me = useQuery(api.users.currentUser) as Me;
   const ensureUser = useMutation(api.users.ensureUser);
@@ -130,18 +131,36 @@ function DashboardInner() {
             <h2 className="font-display font-bold text-lg">Your reels</h2>
             <div className="mt-3 space-y-2.5">
               {jobs.map((j) => (
-                <div key={j._id} className="flex items-center justify-between rounded-2xl border border-[#E5E5E2] bg-white p-4">
-                  <div className="min-w-0">
-                    <div className="font-mono text-[10px] uppercase tracking-wider text-secondaryText">{j.mode}</div>
-                    <div className="font-sans text-sm text-charcoal truncate max-w-[46ch]">{j.prompt}</div>
-                  </div>
+                <div
+                  key={j._id}
+                  onDoubleClick={() => j.status === "done" && navigate(`/studio/${j._id}`)}
+                  title={j.status === "done" ? "Double-click to open in Studio" : undefined}
+                  className="flex items-center gap-4 rounded-2xl border border-[#E5E5E2] bg-white p-4"
+                >
                   {j.status === "done" && j.resultUrl ? (
-                    <a href={j.resultUrl} target="_blank" rel="noreferrer" className="shrink-0 rounded-xl bg-electricBlue text-white px-4 py-2 text-sm font-semibold hover:opacity-90">Watch ↗</a>
-                  ) : j.status === "failed" ? (
-                    <span className="shrink-0 text-xs font-mono text-red-500">failed</span>
+                    <video src={j.resultUrl} controls playsInline preload="metadata"
+                      className="w-[104px] aspect-[9/16] rounded-xl bg-black object-cover shrink-0" />
                   ) : (
-                    <span className="shrink-0 flex items-center gap-1.5 text-xs font-mono text-secondaryText"><span className="w-3 h-3 border-2 border-secondaryText/30 border-t-secondaryText rounded-full animate-spin" /> {j.status}</span>
+                    <div className="w-[104px] aspect-[9/16] rounded-xl bg-warmBg border border-[#E5E5E2] flex items-center justify-center shrink-0">
+                      {j.status === "failed"
+                        ? <span className="text-[10px] font-mono text-red-500">failed</span>
+                        : <span className="w-4 h-4 border-2 border-secondaryText/30 border-t-secondaryText rounded-full animate-spin" />}
+                    </div>
                   )}
+                  <div className="min-w-0 flex-1">
+                    <div className="font-mono text-[10px] uppercase tracking-wider text-secondaryText">{j.mode}</div>
+                    <div className="font-sans text-sm text-charcoal truncate">{j.prompt}</div>
+                    {j.status === "done" && j.resultUrl ? (
+                      <button onClick={() => navigate(`/studio/${j._id}`)}
+                        className="mt-2 inline-flex items-center gap-1 rounded-xl bg-charcoal text-white px-3.5 py-1.5 text-xs font-semibold hover:bg-electricBlue transition-colors">
+                        Open in Studio →
+                      </button>
+                    ) : j.status === "failed" ? (
+                      <div className="mt-1 text-xs font-mono text-red-500">generation failed</div>
+                    ) : (
+                      <div className="mt-1 text-xs font-mono text-secondaryText">{j.status}…</div>
+                    )}
+                  </div>
                 </div>
               ))}
             </div>

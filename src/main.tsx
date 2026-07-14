@@ -5,6 +5,7 @@ import { BrowserRouter, Routes, Route } from 'react-router-dom'
 import App from './App.tsx'
 import Pricing from './pages/Pricing.tsx'
 import Dashboard from './pages/Dashboard.tsx'
+import Studio from './pages/Studio.tsx'
 import { ClerkProvider, useAuth } from '@clerk/clerk-react'
 import { ConvexProvider, ConvexReactClient } from 'convex/react'
 import { ConvexProviderWithClerk } from 'convex/react-clerk'
@@ -24,6 +25,7 @@ const routes = (
       <Route path="/" element={<App />} />
       <Route path="/pricing" element={<Pricing />} />
       <Route path="/create" element={<Dashboard />} />
+      <Route path="/studio/:id" element={<Studio />} />
     </Routes>
   </BrowserRouter>
 )
