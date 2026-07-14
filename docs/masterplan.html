@@ -1,0 +1,465 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Reely — Master Plan</title>
+<style>
+  :root{
+    --ink:#141220; --muted:#5d5872; --line:#e5e2ee; --paper:#fff;
+    --violet:#7c5cff; --violet-d:#5b3ee0; --pink:#ff5c8a; --green:#22b06b; --amber:#e0930a;
+    --dark:#100e1c; --wash:#f7f5ff;
+    --mono:"SF Mono",ui-monospace,"JetBrains Mono",Menlo,Consolas,monospace;
+    --sans:-apple-system,BlinkMacSystemFont,"Segoe UI",Inter,Helvetica,Arial,sans-serif;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  html{-webkit-print-color-adjust:exact;print-color-adjust:exact}
+  body{font-family:var(--sans);color:var(--ink);font-size:10.3pt;line-height:1.5}
+  @page{size:A4;margin:15mm 14mm}
+  .page{page-break-after:always}
+  .page:last-child{page-break-after:auto}
+  h1,h2,h3,h4{line-height:1.15;font-weight:700;letter-spacing:-.01em}
+  p{margin:0 0 8px}
+  code,.mono{font-family:var(--mono)}
+  a{color:var(--violet-d);text-decoration:none}
+
+  /* COVER */
+  .cover{background:var(--dark);color:#fff;height:267mm;display:flex;flex-direction:column;
+    justify-content:space-between;padding:20mm 16mm;margin:-15mm -14mm;
+    background-image:radial-gradient(circle at 80% 15%, rgba(124,92,255,.35), transparent 45%),radial-gradient(circle at 15% 85%, rgba(255,92,138,.22), transparent 40%)}
+  .cover .brand{font-family:var(--mono);font-size:11pt;color:#a29bc4;letter-spacing:.04em}
+  .cover .brand b{color:var(--violet)}
+  .cover h1{font-size:64pt;line-height:.92;margin:0;letter-spacing:-.03em}
+  .cover h1 .d{color:var(--violet)}
+  .cover .tag{font-size:15pt;color:#d6d2e8;margin-top:16px;max-width:155mm}
+  .cover .modes{display:flex;gap:8px;margin-top:22px}
+  .cover .modes .m{flex:1;border:1px solid #2c2842;border-radius:8px;padding:12px;background:rgba(255,255,255,.03)}
+  .cover .modes .m .n{font-family:var(--mono);font-size:8pt;color:var(--violet);letter-spacing:.08em}
+  .cover .modes .m .t{font-size:10pt;font-weight:700;margin:3px 0}
+  .cover .modes .m .s{font-size:8.3pt;color:#9d98b8}
+  .cover .foot{display:flex;justify-content:space-between;font-family:var(--mono);font-size:9pt;color:#8681a0;border-top:1px solid #2c2842;padding-top:12px}
+
+  .kicker{font-family:var(--mono);font-size:8.5pt;letter-spacing:.14em;text-transform:uppercase;color:var(--violet-d);font-weight:700}
+  h2.sec{font-size:22pt;margin:2px 0 3px}
+  .sub{color:var(--muted);font-size:10.3pt;margin-bottom:13px;padding-bottom:11px;border-bottom:2px solid var(--ink)}
+  h3{font-size:12.5pt;margin:15px 0 6px}
+  h4{font-size:8.3pt;margin:0 0 4px;font-family:var(--mono);color:var(--violet-d);text-transform:uppercase;letter-spacing:.05em}
+
+  ul,ol{margin:0 0 9px 0;padding-left:16px}
+  li{margin:0 0 4px}
+  li::marker{color:var(--violet)}
+
+  .box{border:1px solid var(--line);border-radius:7px;padding:11px 13px;margin:9px 0;background:#fdfcff}
+  .box.wash{background:var(--wash);border-color:#e0d9ff}
+  .box.green{background:#f0fbf5;border-color:#c2ecd5}
+  .box.pink{background:#fff2f6;border-color:#ffd0de}
+  .box.amber{background:#fff9ec;border-color:#f6e2b0}
+  .box.dark{background:var(--dark);color:#e8e6f2;border:none}
+  .box.dark .mono{color:#a99bff}
+  .box h4{margin-top:0}
+
+  .grid2{display:grid;grid-template-columns:1fr 1fr;gap:9px}
+  .grid3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:9px}
+
+  table{width:100%;border-collapse:collapse;margin:7px 0;font-size:9pt}
+  th,td{text-align:left;padding:5px 8px;border-bottom:1px solid var(--line);vertical-align:top}
+  th{background:#f3f1fa;font-size:7.8pt;text-transform:uppercase;letter-spacing:.05em;color:var(--muted)}
+  td.mono{font-family:var(--mono);font-size:8.3pt}
+
+  .chip{display:inline-block;font-family:var(--mono);font-size:8pt;border:1px solid var(--line);border-radius:5px;padding:3px 8px;background:#fff;margin:2px 3px 2px 0}
+  .chip b{color:var(--violet-d)}
+  .pill{display:inline-block;font-family:var(--mono);font-size:7.3pt;padding:1px 6px;border-radius:20px;font-weight:700}
+  .p-free{background:#eceaf5;color:#4a4664}.p-pro{background:#1a1630;color:#c9b6ff}.p-25{background:#efe9ff;color:var(--violet-d)}
+
+  .flow{display:flex;align-items:stretch;gap:0;margin:9px 0;font-family:var(--mono);font-size:7.6pt}
+  .flow .node{flex:1;border:1px solid var(--line);border-radius:6px;padding:7px;text-align:center;background:#fff}
+  .flow .node b{display:block;font-size:8pt;color:var(--ink);margin-bottom:2px}
+  .flow .node span{color:var(--muted)}
+  .flow .arw{display:flex;align-items:center;padding:0 4px;color:var(--violet);font-weight:700}
+
+  .price{border:1px solid var(--line);border-radius:9px;padding:13px;background:#fff}
+  .price.pro{border:2px solid var(--violet);background:#100e1c;color:#eee}
+  .price.pro h4{color:#c9b6ff}
+  .price .amt{font-size:23pt;font-weight:800;letter-spacing:-.02em}
+  .price.pro .amt{color:#c9b6ff}
+  .price .per{font-size:8.6pt;color:var(--muted);font-weight:600}
+  .price.pro .per{color:#9d98b8}
+  .price ul{font-size:9pt;margin-top:7px}.price.pro li::marker{color:#c9b6ff}
+
+  .tl{border-left:2px solid var(--violet);margin-left:6px;padding-left:14px}
+  .tl .row{margin-bottom:8px;position:relative}
+  .tl .row::before{content:"";position:absolute;left:-19px;top:4px;width:8px;height:8px;border-radius:50%;background:var(--violet)}
+  .tl .t{font-family:var(--mono);font-size:8.3pt;color:var(--violet-d);font-weight:700}
+
+  .tweet{border:1px solid var(--line);border-radius:10px;padding:9px 12px;margin:7px 0;background:#fff}
+  .tweet .hd{display:flex;justify-content:space-between;font-size:8.2pt;color:var(--muted);margin-bottom:4px;font-family:var(--mono)}
+  .tweet .body{font-size:9.4pt;line-height:1.42;white-space:pre-wrap}
+  .tweet .meta{font-size:7.8pt;color:var(--muted);margin-top:5px;border-top:1px dashed var(--line);padding-top:4px}
+  .tweet .meta b{color:var(--violet-d)}
+  .slot{font-family:var(--mono);font-size:7.8pt;background:var(--violet);color:#fff;padding:1px 6px;border-radius:4px;font-weight:700}
+
+  .callout{border-left:3px solid var(--violet);padding:3px 0 3px 12px;margin:9px 0;font-size:10pt}
+  .small{font-size:8.4pt;color:var(--muted)}
+  .nobreak{break-inside:avoid}
+  .tag-prov{font-family:var(--mono);font-size:7.5pt;color:#9d98b8;border:1px dashed #3a3556;border-radius:4px;padding:2px 7px}
+</style>
+</head>
+<body>
+
+<!-- COVER -->
+<section class="page">
+  <div class="cover">
+    <div class="brand">HERMES BUILDATHON <b>/</b> GROWTHX <b>/</b> VIRALITY TRACK &nbsp; <span class="tag-prov">working name — rename freely</span></div>
+    <div>
+      <h1>reely<span class="d">.</span></h1>
+      <div class="tag">a content studio that lives in your chat. send an idea, a raw clip, or a youtube link — get back a captioned vertical short. hermes writes the words, ffmpeg cuts the video. no capcut, no prompts, no converter sites.</div>
+      <div class="modes">
+        <div class="m"><div class="n">MODE 1 — GENERATE</div><div class="t">topic → viral reel</div><div class="s">hermes brainstorms a viral angle, scripts + voices it, returns a 14–20s reel</div></div>
+        <div class="m"><div class="n">MODE 2 — EDIT</div><div class="t">footage → reel</div><div class="s">send a clip, get it transcribed, captioned, cut, sticker'd</div></div>
+        <div class="m"><div class="n">MODE 3 — CLIP</div><div class="t">youtube → reel</div><div class="s">paste a link + timestamps, get a captioned short of that moment</div></div>
+      </div>
+    </div>
+    <div class="foot"><span>MASTER PLAN v1.0</span><span>/Users/psudokit/video-hermess</span><span>@PsudoKit · 12 JUL 2026</span></div>
+  </div>
+</section>
+
+<!-- 1. PRODUCT -->
+<section class="page">
+  <div class="kicker">01 — The Product</div>
+  <h2 class="sec">One engine, three doorways</h2>
+  <div class="sub">Every mode collapses to the same core: Hermes generates the words, ffmpeg burns them onto video. That's why three modes is one build, not three.</div>
+
+  <p>Two problems kill posting: not knowing <em>what</em> to make (the blank page), and hating the edit (CapCut to trim, one site to convert, another to caption, another to sticker). Reely solves both in one chat — it can <strong>brainstorm a viral concept and hand you the finished reel</strong>, or take your clip/link and cut one. You edit any step by just replying.</p>
+
+  <div class="grid3">
+    <div class="box wash"><h4>Mode 1 · Generate</h4><p style="margin:0" class="small">"give me a viral reel on why upi won." → Hermes <b>brainstorms 2–3 viral angles</b>, you pick one → writes the hook + script → ElevenLabs voiceover → captions over kinetic text/b-roll → a tight <b>14–20s reel</b> built for the algorithm.</p></div>
+    <div class="box wash"><h4>Mode 2 · Edit</h4><p style="margin:0" class="small">Send raw footage → Whisper transcribes → Hermes writes captions/meme text → ffmpeg trims, captions, formats → subtitled clip or sticker pack.</p></div>
+    <div class="box wash"><h4>Mode 3 · Clip (YouTube)</h4><p style="margin:0" class="small">Paste a link + "2:30–3:15" (or a topic) → yt-dlp grabs <b>only that segment</b> → captioned vertical short of the moment.</p></div>
+  </div>
+
+  <div class="callout">The wow in the demo: <strong>from "I don't know what to post" to a finished 14–20s reel in one message.</strong> Then show the range — paste a 2-hour podcast link, ask for one moment (Mode 3), and a captioned clip comes back the same 40 seconds later. Three inputs, one chat window.</div>
+
+  <h3>Why it plays to Hermes's strengths</h3>
+  <p>Hermes is strong at <strong>content generation</strong> (scripting, captions, meme copy) <em>and</em> <strong>tool use</strong> (driving ffmpeg/yt-dlp/Whisper). Reely uses both at once and registers as a native Hermes <strong>skill</strong> — the agent reads your message, routes to the right operation chain, and returns the file. That is textbook "Way 2" eligibility: a real product running on Hermes with end users interacting through it.</p>
+
+  <div class="box amber nobreak"><h4>Scope discipline (why this is one 8-hour build, not five)</h4><p style="margin:0">All three modes reuse the caption engine, the ffmpeg op library, the chat gateway, the job queue, and the watermark. Mode 1 adds one TTS call. Modes 2 &amp; 3 add one transcription call. <b>No Remotion</b> — kinetic captions are pure ffmpeg. That is the entire delta.</p></div>
+
+  <p class="small"><b>Name:</b> "reely" is a working title. Alternates to check for domains: <span class="mono">cliply</span>, <span class="mono">yapclip</span>, <span class="mono">cutaway</span>, <span class="mono">snip.chat</span>. Pick before launch so the watermark + share loop carry a real brand.</p>
+</section>
+
+<!-- 2. ARCHITECTURE -->
+<section class="page">
+  <div class="kicker">02 — Technical Architecture</div>
+  <h2 class="sec">How it's built</h2>
+  <div class="sub">ffmpeg-first. Hermes is the brain and the eligibility. Everything heavy is capped and queued.</div>
+
+  <div>
+    <span class="chip"><b>Hermes</b> · skill registration + NL routing + scripting (mandatory)</span>
+    <span class="chip"><b>ffmpeg</b> · all trim/caption/convert/assemble</span>
+    <span class="chip"><b>yt-dlp</b> · segment download (Mode 3)</span>
+    <span class="chip"><b>Whisper</b> · transcription (Modes 2 &amp; 3)</span>
+    <span class="chip"><b>ElevenLabs</b> · voiceover (Mode 1, +25)</span>
+    <span class="chip"><b>Linkup</b> · live facts to ground reels (Mode 1, +25)</span>
+    <span class="chip"><b>Convex</b> · jobs/users/usage (+25)</span>
+    <span class="chip"><b>Cloudflare</b> · hosting + file delivery (+25)</span>
+    <span class="chip"><b>Dodo</b> · ₹99 watermark unlock (+25)</span>
+  </div>
+
+  <h3>Sponsor power-ups — how each earns its +25 (and the proof to show)</h3>
+  <table>
+    <tr><th>Tool</th><th>Real work in reely</th><th>Proof for the mentor</th></tr>
+    <tr><td class="mono">ElevenLabs</td><td>Mode 1 voiceover — the reel's narration IS the product, not a dead snippet</td><td>live demo: generate a reel, it speaks</td></tr>
+    <tr><td class="mono">Linkup</td><td>Mode 1 grounds the script in <b>live web facts + sources</b> before writing — timely, not hallucinated</td><td>code (src/search) + a live query returning facts that appear in the reel</td></tr>
+    <tr><td class="mono">Convex</td><td>main backend — jobs, users, per-day usage (free-tier cap), Pro state</td><td>repo + Convex dashboard rows updating live</td></tr>
+    <tr><td class="mono">Dodo</td><td>live ₹99 checkout that flips the user to Pro (drops watermark) via webhook</td><td>Dodo dashboard + a real checkout on stage</td></tr>
+    <tr><td class="mono">Cloudflare</td><td>hosts the landing/waitlist + serves output files (Pages/R2/Workers)</td><td>live URL + CF dashboard</td></tr>
+    <tr><td class="mono">Wispr Flow</td><td>dictate 500+ words during the event (build notes / the pitch) — a personal action, no product change</td><td>Wispr stats screenshot</td></tr>
+  </table>
+  <p class="small"><b>All six = +150</b> on top of the base rubric. Only Linkup needed new product code (the grounding step); the other four are already core to reely; Wispr is you dictating on the day.</p>
+
+  <div class="box green nobreak"><h4>Where Hermes is used (the eligibility answer)</h4>
+    <p style="margin:0 0 6px" class="small">The rule: use Hermes to <b>build</b> the agent (Way 1) <b>or</b> have the product <b>run on</b> Hermes with users interacting through it (Way 2). <b>reely does both — and Way 2 is the strong one: reely literally <u>is</u> a Hermes skill.</b> Hermes is the runtime users talk to, not a library we call once.</p>
+    <table style="margin:0">
+      <tr><th>Hermes capability</th><th>What it does in reely</th></tr>
+      <tr><td class="mono">Gateway</td><td>Telegram/WhatsApp/Discord — how the user sends the idea/clip/link and gets the reel back. The product surface <b>is</b> the Hermes gateway.</td></tr>
+      <tr><td class="mono">Skill</td><td>The media toolset registers as a native Hermes skill; the agent auto-routes a message to the right operation chain.</td></tr>
+      <tr><td class="mono">Content gen</td><td>Brainstorms viral angles, writes the script, writes captions/meme text (Mode 1 + Mode 2/3 captions).</td></tr>
+      <tr><td class="mono">Subagents</td><td>Optional: parallel ops (transcribe while fetching b-roll) fanned out at runtime.</td></tr>
+      <tr><td class="mono">Memory</td><td>Optional: remembers a user's voice pick / caption style across requests.</td></tr>
+      <tr><td class="mono">Way 1 (build)</td><td>We also code the whole thing <i>with</i> Hermes — keep prompt-history + commits as receipts for mentors.</td></tr>
+    </table>
+    <p style="margin:6px 0 0" class="small">Proof to show a mentor: the live Telegram bot doing a real edit (Way 2 capability doing real work) + the Hermes session receipts (Way 1).</p>
+  </div>
+
+  <h3>Data flow (shared core)</h3>
+  <div class="box dark nobreak">
+    <div class="flow" style="font-size:7.2pt">
+      <div class="node" style="background:#1c1830;border-color:#2c2842;color:#eee"><b>chat message</b><span style="color:#8681a0">idea / file / yt link</span></div>
+      <div class="arw">→</div>
+      <div class="node" style="background:#1c1830;border-color:#2c2842;color:#eee"><b>Hermes skill</b><span style="color:#8681a0">parse intent → op schema</span></div>
+      <div class="arw">→</div>
+      <div class="node" style="background:#1c1830;border-color:#2c2842;color:#eee"><b>ingest</b><span style="color:#8681a0">yt-dlp / upload / none</span></div>
+      <div class="arw">→</div>
+      <div class="node" style="background:#1c1830;border-color:#2c2842;color:#eee"><b>generate words</b><span style="color:#8681a0">script / captions (LLM+Whisper)</span></div>
+    </div>
+    <div class="flow" style="font-size:7.2pt;margin-top:6px">
+      <div class="node" style="background:#1c1830;border-color:#2c2842;color:#eee"><b>queue job</b><span style="color:#8681a0">capped worker pool</span></div>
+      <div class="arw">→</div>
+      <div class="node" style="background:#1c1830;border-color:#2c2842;color:#eee"><b>ffmpeg chain</b><span style="color:#8681a0">cut · caption · watermark</span></div>
+      <div class="arw">→</div>
+      <div class="node" style="background:#1c1830;border-color:#2c2842;color:#eee"><b>validate output</b><span style="color:#8681a0">not empty/black, fits limit</span></div>
+      <div class="arw">→</div>
+      <div class="node" style="background:#1c1830;border-color:#2c2842;color:#eee"><b>send + cleanup</b><span style="color:#8681a0">delete temp files</span></div>
+    </div>
+  </div>
+
+  <h3>The NL → operation schema (the security firewall)</h3>
+  <p>User text <strong>never</strong> becomes a shell string. Hermes maps intent to a fixed, validated operation list; each op is executed with argument arrays, not interpolated commands. This is the single most important design choice — it kills command injection and makes chaining reliable.</p>
+  <div class="box dark"><div class="mono" style="font-size:8pt;line-height:1.5;color:#e8e6f2">
+[ { op:"clip", start:"2:30", end:"3:15" },<br>
+&nbsp;&nbsp;{ op:"captions", source:"whisper", style:"karaoke" },<br>
+&nbsp;&nbsp;{ op:"format", aspect:"9:16" },<br>
+&nbsp;&nbsp;{ op:"watermark", text:"made with reely", show:!isPro } ]
+  </div></div>
+
+  <h3>Convex schema (core)</h3>
+  <div class="box dark"><div class="mono" style="font-size:8pt;line-height:1.5;color:#e8e6f2">
+jobs { id, userId, mode, source, ops[], status, inBytes, outBytes, ms, isPro }<br>
+users { id, platform, handle, freeUsedToday, isPro, refCode }<br>
+usage { userId, day, count } &nbsp; // enforces the free-tier daily cap
+  </div></div>
+
+  <h3>Why no Remotion</h3>
+  <p class="small">Remotion renders React in headless Chromium — 2–3GB per render, your stated crash risk. Every caption style you need (word-by-word karaoke, meme top/bottom text, kinetic titles) is achievable with ffmpeg <span class="mono">drawtext</span> and <span class="mono">.ass</span> subtitles at a fraction of the cost. Keep Remotion out of the buildathon entirely; revisit only if you later want templated motion graphics, and then run it as a single-concurrency isolated worker.</p>
+</section>
+
+<!-- 3. RESOURCE / CONCURRENCY -->
+<section class="page">
+  <div class="kicker">03 — Resource &amp; Concurrency</div>
+  <h2 class="sec">So it never crashes under load</h2>
+  <div class="sub">Your #1 concern, answered. A capped queue with hard per-job limits — not fire-and-forget.</div>
+
+  <div class="grid2">
+    <div class="box"><h4>Queue &amp; concurrency</h4><ul style="margin-bottom:0">
+      <li>Global concurrency = <b>CPU cores − 1</b> (e.g. 3 ffmpeg jobs at once)</li>
+      <li>Per-user cap = <b>1 active job</b>; the rest queue ("you're #4 in line")</li>
+      <li>Queue depth &gt; ~20 → reject politely, don't accumulate an OOM</li>
+    </ul></div>
+    <div class="box"><h4>Per-job hard limits (reject before processing)</h4><ul style="margin-bottom:0">
+      <li>File ≤ <b>50MB</b> (Telegram bot-API limit anyway)</li>
+      <li>Duration ≤ <b>5 min</b>, resolution ≤ <b>1080p</b> (downscale 4K on ingest)</li>
+      <li>Wall-clock timeout <b>60–120s</b> → kill the whole process group</li>
+      <li><span class="mono">ffmpeg -threads 2</span> so one job can't grab all cores</li>
+    </ul></div>
+  </div>
+
+  <div class="grid2">
+    <div class="box green"><h4>YouTube ingest — the key infra win</h4><p style="margin:0">Never download the whole 2-hour video. yt-dlp <span class="mono">--download-sections "*2:30-3:15"</span> fetches <b>only the requested segment</b>. Cap segment length (≤3 min), cap source duration, and reject live streams. This keeps Mode 3 as light as Mode 2.</p></div>
+    <div class="box pink"><h4>Disk hygiene (the silent killer)</h4><p style="margin:0">Unique temp dir per job; delete input + output <b>immediately after send</b>. Disk-space guard refuses new jobs below a free-space threshold. TTL sweep for orphaned files. On timeout, <span class="mono">kill -9</span> the process group or zombie ffmpeg/yt-dlp procs eat RAM.</p></div>
+  </div>
+
+  <div class="box dark nobreak"><h4>Rough capacity on one modest box (4 vCPU / 8GB)</h4>
+  <p style="margin:0" class="small">3 concurrent ffmpeg jobs ≈ 0.6–1.2GB RAM, each caption/trim job finishes in seconds to ~30s. At ~3 jobs/min throughput that's <b>thousands of shorts/day</b> queued smoothly. A viral spike doesn't crash it — it queues, and "you're #6 in line" is acceptable UX. What would crash it (Remotion, whole-video downloads, uncapped file sizes, no timeouts) is exactly what the rules above remove.</p></div>
+
+  <div class="callout small">Contrast with died.fyi: there, virality directly multiplied browser-farm cost. Here, the caps + segment-only downloads + ffmpeg-first keep marginal cost per short at cents, and the queue absorbs spikes. This is the light shape you wanted.</div>
+
+  <h3>Hosting &amp; cost — one VPS is enough</h3>
+  <p class="small">Hermes is <b>the</b> Telegram/WhatsApp backend — you don't build a bot server. Its gateway connects to chat, routes to the reely skill, and sends the file back. Hermes runs on the same VPS as the ffmpeg workers. <b>The model is an external OpenAI-compatible API call, so no GPU is needed</b> — that's what keeps hosting cheap.</p>
+  <div class="grid2">
+    <div class="box"><h4>What it costs</h4>
+      <table style="margin:0">
+        <tr><th>Item</th><th>Note</th><th>Rough</th></tr>
+        <tr><td>Hermes software</td><td>open-source, just a process</td><td class="mono">free</td></tr>
+        <tr><td>VPS (4 vCPU/8GB)</td><td>Hermes + ffmpeg workers</td><td class="mono">$15–48/mo</td></tr>
+        <tr><td>LLM tokens</td><td>brainstorm/script/route</td><td class="mono">$200 credits</td></tr>
+        <tr><td>ElevenLabs + Whisper</td><td>voice + transcribe (API)</td><td class="mono">power-up + cents</td></tr>
+      </table>
+      <p class="small" style="margin:5px 0 0">Buildathon gives $200 OpenAI credits; hourly VPS cost for the event is pennies.</p>
+    </div>
+    <div class="box green"><h4>Single-VPS budget (4 vCPU / 8GB)</h4><ul style="margin-bottom:4px">
+      <li>Hermes process ~0.5–1GB (orchestrator; LLM is remote)</li>
+      <li>3 concurrent ffmpeg jobs ~0.6–1.2GB behind the queue</li>
+      <li>yt-dlp + Whisper-via-API ~ near-zero local footprint</li>
+    </ul>
+    <p class="small" style="margin:0">Scales by adding worker boxes <i>behind the same queue</i> later — no rearchitecting. Telegram first (robust); WhatsApp second (QR-session bridge, flakier). What breaks single-VPS — self-hosted Whisper/LLM (GPU) and Remotion — is already ruled out.</p></div>
+  </div>
+</section>
+
+<!-- 4. EDGE CASES -->
+<section class="page">
+  <div class="kicker">04 — Edge Case Matrix</div>
+  <h2 class="sec">What will break, and the handling</h2>
+  <div class="sub">The list judges and reality will probe. Handle the top rows; acknowledge the rest.</div>
+
+  <h3>Command &amp; chaining</h3>
+  <table>
+    <tr><th>Case</th><th>Handling</th></tr>
+    <tr><td>Vague command ("make it better")</td><td>Ask one clarifying question; never guess silently</td></tr>
+    <tr><td>Impossible chain ("to mp3 + add watermark")</td><td>Detect at schema stage, explain why</td></tr>
+    <tr><td>Mid-chain failure (step 2 of 3 dies)</td><td>Report which step; return last good artifact</td></tr>
+    <tr><td>Timestamp ambiguity / out of range</td><td>Normalize "30"→0:30; clamp to duration; reject start&gt;end</td></tr>
+  </table>
+
+  <h3>YouTube / yt-dlp (Mode 3 specific)</h3>
+  <table>
+    <tr><th>Case</th><th>Handling</th></tr>
+    <tr><td>Private / age-restricted / members-only / geo-blocked</td><td>Catch yt-dlp error, return a clear "can't access this video" message</td></tr>
+    <tr><td>Live stream / premiere / very long video</td><td>Reject live; cap source duration; segment-only download</td></tr>
+    <tr><td>YouTube bot-detection / rate limit</td><td>Backoff + retry; optional cookies; queue so you don't hammer</td></tr>
+    <tr><td>Requested moment beyond video length</td><td>Clamp or ask; don't fetch empty range</td></tr>
+    <tr><td class="mono" style="color:var(--pink)">Copyright / ToS</td><td><b>Ownership/fair-use checkbox; attribution on output; position as clipping your own / licensed content, not a rip tool</b></td></tr>
+  </table>
+
+  <h3>Media &amp; platform</h3>
+  <table>
+    <tr><th>Case</th><th>Handling</th></tr>
+    <tr><td>Fake extension, corrupt, zero-byte</td><td><span class="mono">ffprobe</span> validate first; reject cleanly</td></tr>
+    <tr><td>Rotation metadata / odd dimensions</td><td><span class="mono">-autorotate</span>; scale to even width/height</td></tr>
+    <tr><td>No audio (asked for audio) / no video (asked to trim)</td><td>Detect streams; explain the mismatch</td></tr>
+    <tr><td>Output exceeds platform send limit</td><td>Auto-compress-to-fit or return a download link</td></tr>
+    <tr><td>WhatsApp 16MB / Discord 25MB / Telegram 50MB</td><td>Know each; target output under the active platform's cap</td></tr>
+  </table>
+
+  <h3>Security / abuse (do not skip)</h3>
+  <table>
+    <tr><td>Command injection via NL</td><td>Fixed op schema + arg arrays; never shell-interpolate user text</td></tr>
+    <tr><td>SSRF / "edit this URL" tricks</td><td>ffmpeg <span class="mono">-protocol_whitelist file</span>; no network protocols</td></tr>
+    <tr><td>Decompression bombs / crafted files</td><td>Resource caps + timeout + sandboxed worker contain blast radius</td></tr>
+    <tr><td>Spam (100 jobs)</td><td>Per-user rate limit + queue cap already handle it</td></tr>
+  </table>
+</section>
+
+<!-- 5. VIRALITY + REVENUE -->
+<section class="page">
+  <div class="kicker">05 — Virality &amp; Revenue</div>
+  <h2 class="sec">Winning the track + the ₹99 unlock</h2>
+  <div class="sub">Signups are 25×. A private tool has no free loop — so we engineer three, and one feature is both the ad and the revenue.</div>
+
+  <div class="grid2">
+    <div class="box wash"><h4>Loop 1 · Watermark = ad + revenue</h4><p style="margin:0" class="small">Free outputs carry "made with reely". Every reel someone posts is a distributed ad. Removing it is the paid unlock — the single most proven micro-payment pattern (Epik, upscalers all monetized exactly this).</p></div>
+    <div class="box wash"><h4>Loop 2 · Stickers in-chat</h4><p style="margin:0" class="small">Sticker/GIF output spreads through WhatsApp &amp; Telegram groups by design — the one output that propagates <i>inside</i> the app it's built on.</p></div>
+  </div>
+  <div class="box wash"><h4>Loop 3 · Build-in-public + signup gate</h4><p style="margin:0" class="small">The "I replaced CapCut + 4 sites with one chat" post is strong builder-Twitter content. Pair it with "3 free shorts, then sign up to continue" — that turns reach into the 25× meaningful-action metric.</p></div>
+
+  <h3>The Dodo model</h3>
+  <div class="grid2" style="margin-top:8px">
+    <div class="price"><h4>FREE — the acquisition engine</h4><div class="amt">₹0</div><div class="per">3 shorts/day · sign up to continue</div>
+      <ul><li>All 3 modes</li><li>Watermark + ref code on output</li><li>50MB / 5-min / 1080p caps</li><li>Standard queue</li></ul>
+    </div>
+    <div class="price pro"><h4>PRO — one-time</h4><div class="amt">₹99 <span style="font-size:11pt;color:#9d98b8">/ $1.99</span></div><div class="per">Dodo · UPI one-tap · no login wall</div>
+      <ul><li><b>No watermark</b>, HD export</li><li>Bigger files, longer clips, batch/chained ops</li><li><b>Priority queue</b> (skip the line)</li><li>Voice picks + caption styles</li></ul>
+    </div>
+  </div>
+  <p class="small">One-time, not subscription (impulse psychology, no churn in a one-day event). Watermark-removal + priority-queue are the two things people impulse-pay for at "this is actually useful." Every ₹99 is also a Revenue-track cross-bonus.</p>
+
+  <div class="box amber nobreak"><h4>Honest track note</h4><p style="margin:0">This scores naturally high in <b>"AI as Agency"</b> (working product shipping real output = 20×) and <b>Revenue</b>. In <b>Virality</b> it competes only via the three loops above. If the room lets you, weigh Agency — but the plan here assumes Virality as you chose.</p></div>
+</section>
+
+<!-- 6. BUILD TIMELINE -->
+<section class="page">
+  <div class="kicker">06 — The 8-Hour Sprint</div>
+  <h2 class="sec">Build timeline (10 AM → 5:30 PM demo)</h2>
+  <div class="sub">Ship one mode end-to-end first, then add the other two on the shared engine. Proof in the back half.</div>
+
+  <div class="tl">
+    <div class="row"><div class="t">10:00 — Kickoff</div>Lock Virality track + idea. Split: 1 on Hermes skill + NL schema, 1 on the ffmpeg op library + queue, 1 on gateway + Cloudflare + launch posts.</div>
+    <div class="row"><div class="t">10:05 — before any code</div>Launch tweet ("building reely…") + one-field waitlist on Cloudflare Pages. Install Datafast with mentor read-only access.</div>
+    <div class="row"><div class="t">10:30–1:00 — Mode 2 first (edit)</div>It's the simplest full loop: upload → Whisper → captions → ffmpeg burn → send. One working captioned clip beats three half-modes.</div>
+    <div class="row"><div class="t">1:00–2:00 — Mode 3 (YouTube)</div>Add yt-dlp <span class="mono">--download-sections</span> as a new ingest in front of the same caption engine. Reuses everything downstream.</div>
+    <div class="row"><div class="t">2:00–3:00 — Mode 1 (generate)</div>Hermes brainstorms viral angles → picks one → script → ElevenLabs voice → captions over kinetic text → 14–20s reel. Reuses the caption + assemble path.</div>
+    <div class="row"><div class="t">2:30 (parallel) — proof</div>Post real outputs. Get peers on the floor to run their clips → each is a signup + a reshare (3× amplification).</div>
+    <div class="row"><div class="t">3:00–4:00 — Dodo + queue caps</div>₹99 watermark unlock live (1 real test purchase). Concurrency cap, per-job limits, disk cleanup, timeouts.</div>
+    <div class="row"><div class="t">4:00–4:45 — polish + guardrails</div>Ownership checkbox for YouTube, rate limits, output validation, milestone post #2.</div>
+    <div class="row"><div class="t">4:45–5:15 — proof pack</div>Screens: Convex users/jobs table, Datafast visitors, Dodo checkout, X analytics, notable reshares.</div>
+    <div class="row"><div class="t">5:30 — demo</div>20s context → run all 3 modes live (paste a judge's fav YouTube link for Mode 3) → 1 min proof numbers → Q&amp;A. Submit before deadline.</div>
+  </div>
+  <div class="box pink"><h4>Cut-line if behind</h4><p style="margin:0">Ship Mode 2 + Mode 3 (both edit-shaped, share the engine) and demo those. Mode 1 (generate) is the first thing to drop — it adds TTS + b-roll risk. Two solid modes &gt; three shaky ones.</p></div>
+</section>
+
+<!-- 7. CREATOR ROADMAP -->
+<section class="page">
+  <div class="kicker">07 — Creator Roadmap</div>
+  <h2 class="sec">Launch-day distribution</h2>
+  <div class="sub">One product, native framing per channel. All copy in @PsudoKit voice — lowercase, specific, no corporate.</div>
+
+  <div class="tweet nobreak"><div class="hd"><span><span class="slot">SLOT 1 · ~10:05</span> launch</span><span>building out loud</span></div>
+    <div class="body">building reely at a buildathon rn.
+
+don't know what to post? it brainstorms a viral reel and makes it. already got a clip or a youtube link? it captions and cuts it. all in one chat. no capcut, no prompts.
+
+link soon.</div>
+    <div class="meta"><b>image:</b> 10s screen rec — "make me a viral reel on X" → finished 15s short · <b>self-reply:</b> waitlist link here (not main tweet)</div></div>
+
+  <div class="tweet nobreak"><div class="hd"><span><span class="slot">SLOT 2 · ~1 PM</span> proof</span><span>specific number</span></div>
+    <div class="body">it works. fed it a 2 hour podcast link and "clip 41:20 to 41:55", got a captioned reel back in 40 seconds.
+
+never scrubbing a timeline for one quote again.</div>
+    <div class="meta"><b>image:</b> the actual output reel · <b>self-reply:</b> "did the same with a raw phone clip. auto captions, straight to sticker"</div></div>
+
+  <div class="tweet nobreak"><div class="hd"><span><span class="slot">SLOT 3 · ~6:30 PM</span> the drill (their post format)</span><span>relatable pain</span></div>
+    <div class="body">you know the drill.
+
+trim a clip → capcut. convert to mp3 → some site. caption it → another. make a sticker → another. minutes of uploading and downloading.
+
+built reely so it's all one chat. free to try 👇</div>
+    <div class="meta"><b>image:</b> before/after — 5 app icons vs one chat bubble · <b>self-reply:</b> direct link + "reply a youtube link and i'll clip it live"</div></div>
+
+  <h3 style="margin-top:12px">Other channels</h3>
+  <table>
+    <tr><th>Channel</th><th>Native framing</th></tr>
+    <tr><td class="mono">r/SideProject</td><td>[Launch] "chat bot that turns a youtube link or raw clip into a captioned short" — first line = the tab-switching pain, live link, GIF demo</td></tr>
+    <tr><td class="mono">r/InternetIsBeautiful</td><td>Frame as a toy: "paste a youtube link + a timestamp, get a captioned vertical clip back". No signup wall visible</td></tr>
+    <tr><td class="mono">Instagram / Reels</td><td>15s screen-rec: "i made this reel by sending one chat message". Reel made BY the tool = the proof. Link in bio</td></tr>
+    <tr><td class="mono">Discord (fire FIRST)</td><td>Builder/college servers before public: "send me a youtube link, i'll clip any moment into a captioned short". Early velocity = algo boost</td></tr>
+  </table>
+  <div class="callout small"><b>Reply-clipping is the cheat code:</b> people reply a YouTube link + a moment, you post the finished short back. Each is a signup, a public post, and live social proof. Block the evening for it.</div>
+</section>
+
+<!-- 8. CHECKLIST -->
+<section class="page">
+  <div class="kicker">08 — Launch Day, One Page</div>
+  <h2 class="sec">The checklist</h2>
+  <div class="sub">If it's on screen at 5:30, it scores. If it isn't, it doesn't exist.</div>
+
+  <div class="grid2">
+    <div class="box"><h4>Build</h4><ul style="margin-bottom:0">
+      <li>☐ Hermes skill registered, NL → op schema</li>
+      <li>☐ Mode 2 (edit) end-to-end captioned clip</li>
+      <li>☐ Mode 3 (YouTube) segment-only download</li>
+      <li>☐ Mode 1 (generate) brainstorm → 14–20s voiced reel</li>
+      <li>☐ Watermark on free + ref code</li>
+      <li>☐ Dodo ₹99 unlock live (1 real purchase)</li>
+      <li>☐ Queue cap + per-job limits + cleanup</li>
+      <li>☐ Ownership checkbox (YouTube)</li>
+    </ul></div>
+    <div class="box"><h4>Proof pack</h4><ul style="margin-bottom:0">
+      <li>☐ Convex users + jobs table (live)</li>
+      <li>☐ Datafast visitors, mentor read-only</li>
+      <li>☐ Dodo dashboard, real checkout</li>
+      <li>☐ X analytics: impressions &gt; followers</li>
+      <li>☐ Notable reshares (open profiles live)</li>
+      <li>☐ A gallery of real outputs made on the floor</li>
+    </ul></div>
+  </div>
+  <div class="grid2">
+    <div class="box wash"><h4>Distribution fired</h4><ul style="margin-bottom:0">
+      <li>☐ X launch + 3 slot posts</li>
+      <li>☐ Discord servers (before public)</li>
+      <li>☐ r/SideProject + r/InternetIsBeautiful</li>
+      <li>☐ IG reel (made by the tool)</li>
+      <li>☐ Reply-clipped 15+ links live</li>
+    </ul></div>
+    <div class="box green"><h4>Numbers to beat</h4><ul style="margin-bottom:0">
+      <li><b>~300 signups</b> = 100 pts + overflow (25×)</li>
+      <li><b>1,000+ visitors</b> = L5 (10×)</li>
+      <li><b>5 power-ups live</b> = +125</li>
+      <li><b>Real Dodo revenue</b> = Revenue cross-bonus</li>
+      <li><b>1 notable reshare</b> = L4 amplification</li>
+    </ul></div>
+  </div>
+
+  <div class="box dark" style="margin-top:12px;text-align:center"><div class="mono" style="font-size:10.5pt;color:#c9b6ff;line-height:1.5">"ffmpeg-first. cap everything. the reel it makes<br>is the ad. the watermark is the price."</div></div>
+  <p class="small" style="text-align:center;margin-top:14px">reely · Hermes Buildathon Master Plan · /Users/psudokit/video-hermess · @PsudoKit · 12 Jul 2026</p>
+</section>
+
+</body>
+</html>
