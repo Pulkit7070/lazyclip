@@ -1,0 +1,6 @@
+node_modules
+dist
+tmp
+fixtures/*.mp4
+*.md
+.env

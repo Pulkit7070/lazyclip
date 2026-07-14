@@ -1,0 +1,50 @@
+{
+  "name": "reely",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Chat-native content studio — a Hermes skill. Idea/clip/YouTube link -> captioned vertical short.",
+  "keywords": [
+    "hermes",
+    "ffmpeg",
+    "video",
+    "shorts",
+    "reels",
+    "telegram",
+    "ai",
+    "captions",
+    "yt-dlp"
+  ],
+  "license": "MIT",
+  "homepage": "https://github.com/JAYATIAHUJA/reely#readme",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/JAYATIAHUJA/reely.git"
+  },
+  "bugs": {
+    "url": "https://github.com/JAYATIAHUJA/reely/issues"
+  },
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "vitest run --config vitest.config.ts",
+    "test:watch": "vitest",
+    "gateway": "node --import tsx src/gateway/run.ts",
+    "reely": "node --import tsx src/cli.ts"
+  },
+  "dependencies": {
+    "convex": "^1.42.1",
+    "dotenv": "^16.4.5",
+    "p-limit": "^6.1.0",
+    "telegraf": "^4.16.3"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.0",
+    "tsx": "^4.19.2",
+    "typescript": "^5.7.2",
+    "vitest": "^2.1.8"
+  }
+}

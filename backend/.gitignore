@@ -1,0 +1,9 @@
+node_modules/
+dist/
+.env
+tmp/
+*.log
+tmp/
+reely-output-*
+.env.*
+!.env.example
