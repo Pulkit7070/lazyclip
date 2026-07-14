@@ -14,10 +14,17 @@
 // clearly-marked helper (uploadAndSign) with a TODO fallback if the GCS SDK is
 // not installed — swap it for the real bucket call when @google-cloud/storage lands.
 import 'dotenv/config';
+import { execFile } from 'node:child_process';
+import { promisify } from 'node:util';
+import { writeFile } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 import { ConvexHttpClient } from 'convex/browser';
 import { makeFunctionReference } from 'convex/server';
 import { createReely } from './app.js';
 import type { Incoming } from './gateway/index.js';
+
+const run = promisify(execFile);
 
 declare const process: {
   env: Record<string, string | undefined>;
@@ -59,6 +66,7 @@ interface ClaimedJob {
   userId: string;
   mode: string;
   prompt: string;
+  sourceUrl: string | null; // set for edit jobs: the reel being edited
 }
 
 // One pipeline instance, reused across jobs. isPro=true on the Incoming below
@@ -68,11 +76,25 @@ const reely = createReely();
 
 // Run the reely pipeline for a claimed job and return the produced mp4 path.
 async function runPipeline(job: ClaimedJob): Promise<string> {
+  // Edit job: download the source reel so the ffmpeg edit pipeline can run on it,
+  // exactly like a Telegram file upload (attachmentPath + instruction text).
+  let attachmentPath: string | undefined;
+  if (job.sourceUrl) {
+    const res = await fetch(job.sourceUrl);
+    if (!res.ok) throw new Error(`could not fetch source reel (${res.status})`);
+    attachmentPath = join(tmpdir(), `reely-src-${job.jobId}.mp4`);
+    await writeFile(attachmentPath, Buffer.from(await res.arrayBuffer()));
+  }
   const inc: Incoming = {
     userId: `web:${job.userId}`,
     platform: 'cli',
     text: job.prompt,
     isPro: true,
+    // A signed-in web user pasting a YouTube link + timestamps in the dashboard is
+    // the ownership confirmation (same rationale as the CLI). Web can't do the
+    // interactive "reply yes" round-trip Telegram uses, so confirm up front.
+    confirmedOwnership: true,
+    attachmentPath,
   };
   const replies = await reely.handle(inc);
   const file = replies.find((r) => r.kind === 'file');
@@ -84,30 +106,27 @@ async function runPipeline(job: ClaimedJob): Promise<string> {
 }
 
 // Upload an mp4 to GCS and return a V4 signed URL (buckets are private per org policy).
-// TODO: requires `npm i @google-cloud/storage` on the VM; falls back to throwing if absent.
+// Mirrors the Telegram gateway's shareToGcs: shells out to `gcloud storage` so the bucket
+// path (gs://bucket/prefix) and the impersonated signing SA (GCS_SIGN_SA) work exactly as
+// they do for the gateway — no SDK, no ADC V4-signing setup needed.
 async function uploadAndSign(localPath: string, jobId: string): Promise<string> {
-  const mod = await import('@google-cloud/storage' as string).catch(() => null);
-  if (!mod) {
-    throw new Error(
-      'GCS upload unavailable — run `npm i @google-cloud/storage` on the VM (see backend/docs/WEB-GENERATION.md)',
-    );
-  }
-  const { Storage } = mod as any;
-  const storage = new Storage(); // uses the VM's attached service account / ADC
-  const objectName = `web/${jobId}-${Date.now()}.mp4`;
-  await storage.bucket(GCS_BUCKET).upload(localPath, {
-    destination: objectName,
-    metadata: { contentType: 'video/mp4' },
-  });
-  const [url] = await storage
-    .bucket(GCS_BUCKET)
-    .file(objectName)
-    .getSignedUrl({
-      version: 'v4',
-      action: 'read',
-      expires: Date.now() + SIGNED_URL_TTL_MS,
-    });
-  return url as string;
+  const sa = process.env.GCS_SIGN_SA; // service account that signs the URLs
+  if (!GCS_BUCKET) throw new Error('GCS_BUCKET not set');
+  if (!sa) throw new Error('GCS_SIGN_SA not set — needed to mint a signed URL');
+  const dest = `${GCS_BUCKET}/web/${jobId}-${Date.now()}.mp4`;
+  await run('gcloud', ['storage', 'cp', localPath, dest]);
+  // With impersonated (system-managed key) signing, gcloud caps signed-URL validity
+  // at 12h — matches the Telegram gateway's shareToGcs. Clamp to that maximum.
+  const durationSec = Math.min(Math.floor(SIGNED_URL_TTL_MS / 1000), 12 * 60 * 60);
+  const { stdout } = await run('gcloud', [
+    'storage', 'sign-url', dest,
+    `--duration=${durationSec}s`,
+    `--impersonate-service-account=${sa}`,
+    '--format=value(signed_url)',
+  ]);
+  const url = stdout.trim();
+  if (!url) throw new Error('gcloud sign-url returned no URL');
+  return url;
 }
 
 // Process a single claimed job end-to-end.
