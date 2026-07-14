@@ -48,7 +48,10 @@ function parseOps(msg: string, mode: Mode, isPro: boolean): Op[] {
   // wide frame first meant the 9:16 crop chopped the text off at the sides
   // NB trailing \b matters: bare /\b1:1|square\b/ matched the "1:1" inside timestamps like "1:15"
   const aspect = /\b(1:1|square)\b/.test(m) ? '1:1' : /\b(16:9|landscape)\b/.test(m) ? '16:9' : '9:16';
-  ops.push({ op: 'format', aspect });
+  // explicit reframe intent; when absent, prepare() decides (subject-focused crop or blur-pad fit)
+  const reframe = /\b(blur|fit|letterbox|no crop|don'?t crop)\b/.test(m) ? 'fit' as const
+    : /\b(crop|fill)\b/.test(m) ? 'crop' as const : undefined;
+  ops.push({ op: 'format', aspect, ...(reframe ? { mode: reframe } : {}) });
 
   // captions: explicit intent, OR generate/clip always caption, OR an edit with no other explicit op
   const hasExplicit = captionsIntent || stickerIntent || formatIntent || !!ts || speedIntent || toGif || toWebm;

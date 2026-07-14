@@ -6,6 +6,7 @@ import { handleMessage, type GatewayDeps, type Incoming, type Reply } from './ga
 import { mediaCore } from './media/index.js';
 import { ff, ffprobe } from './media/ffmpeg.js';
 import { wordsToCues } from './media/captions.js';
+import { detectFocusX } from './media/focus.js';
 import { ingest } from './ingest/index.js';
 import { transcriber } from './transcribe/index.js';
 import { content } from './content/index.js';
@@ -35,8 +36,23 @@ async function prepare(job: JobSpec, ctx: JobCtx): Promise<{ inputPath?: string;
   }
 
   // MODE edit/clip: ingest (validate upload / yt-dlp segment), then enrich whisper captions
-  const { path } = await ingest.ingest(job.source, job.limits);
+  const { path, meta } = await ingest.ingest(job.source, job.limits);
   let ops = job.ops;
+
+  // smart reframe: when the source is wider than the target canvas, a blind center-crop cuts
+  // off-center subjects. Ask the vision LLM where the subject is -> focused crop; when it's
+  // unsure (or offline) fall back to blur-pad fit so nothing is ever cut. Explicit user
+  // intent (mode already set) is respected as-is.
+  const RATIOS: Record<string, number> = { '9:16': 9 / 16, '1:1': 1, '16:9': 16 / 9 };
+  const fmt = ops.find((o) => o.op === 'format' && o.mode !== 'fit' && o.focusX === undefined);
+  if (fmt?.op === 'format' && path && meta.width / Math.max(1, meta.height) > (RATIOS[fmt.aspect] ?? 9 / 16) + 0.01) {
+    const focusX = await detectFocusX(path, ctx);
+    ops = ops.map((o) => (o === fmt
+      ? (focusX !== null ? { ...o, mode: 'crop' as const, focusX }
+        // detection unsure: an explicit crop request stays a center crop; otherwise blur-pad
+        : { ...o, mode: fmt.mode ?? ('fit' as const) })
+      : o));
+  }
   const cap = ops.find((o) => o.op === 'captions' && o.source === 'whisper' && !(o as any).text);
   if (cap && path) {
     try {

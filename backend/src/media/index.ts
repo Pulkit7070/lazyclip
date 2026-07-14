@@ -7,6 +7,8 @@ import { join } from 'node:path';
 import type { MediaCore, Op, JobCtx } from '../types.js';
 import { ff, ffprobe, hasFilter, fontFile } from './ffmpeg.js';
 import { toAss } from './captions.js';
+import { fetchStockBroll } from './broll.js';
+import { formatFilter, cutawayGraph, clampSegments } from './filters.js';
 
 const out = (ctx: JobCtx, op: string, ext = 'mp4') =>
   join(ctx.tmpDir, `${op}-${Math.random().toString(36).slice(2)}.${ext}`);
@@ -23,7 +25,7 @@ export const mediaCore: MediaCore = {
     const sig = ctx.signal;
     // probe the input once so ops can adapt to missing audio/video streams
     const meta = input ? await ffprobe(input).catch(() => null) : null;
-    const needsVideo = ['format', 'watermark', 'captions', 'sticker', 'thumbnail'].includes(op.op);
+    const needsVideo = ['format', 'watermark', 'captions', 'sticker', 'thumbnail', 'cutaways'].includes(op.op);
     if (meta && needsVideo && !meta.hasVideo) throw new MediaError('this file has no video to edit');
     switch (op.op) {
       case 'trim':
@@ -36,8 +38,27 @@ export const mediaCore: MediaCore = {
         const [w, h] = ASPECTS[op.aspect] ?? ASPECTS['9:16'];
         const o = out(ctx, 'format');
         const aCopy = meta?.hasAudio ? ['-c:a', 'copy'] : ['-an'];
+        const blur = (await hasFilter('gblur')) ? 'gblur=sigma=8' : 'boxblur=8:2';
         await ff([...inp(input), '-vf',
-          `scale=${w}:${h}:force_original_aspect_ratio=increase,crop=${w}:${h}`, ...aCopy, o], sig);
+          formatFilter(w, h, op.mode ?? 'crop', op.focusX, blur), ...aCopy, o], sig);
+        return { outputPath: o };
+      }
+      case 'cutaways': {
+        // b-roll cutaways over the A-roll: fetch stock footage per window, overlay it while the
+        // original audio keeps playing. Any window without footage is skipped; none -> passthrough.
+        const [w, h] = [meta?.width || 1080, meta?.height || 1920];
+        const segments = clampSegments(op.segments, meta?.durationSec ?? 0);
+        const clips = await Promise.all(segments.map(async (s) => ({
+          seg: s, path: await fetchStockBroll(s.keywords),
+        })));
+        const usable = clips.filter((c): c is { seg: typeof c.seg; path: string } => !!c.path);
+        const o = out(ctx, 'cutaways');
+        if (!usable.length) { await ff([...inp(input), '-c', 'copy', o], sig); return { outputPath: o }; }
+        const graph = cutawayGraph(usable.map((c) => c.seg), w, h);
+        const brollInputs = usable.flatMap((c) => ['-i', c.path]);
+        const aMap = meta?.hasAudio ? ['-map', '0:a', '-c:a', 'copy'] : ['-an'];
+        await ff([...inp(input), ...brollInputs, '-filter_complex', graph,
+          '-map', '[vout]', ...aMap, o], sig);
         return { outputPath: o };
       }
       case 'speed': {
@@ -122,11 +143,20 @@ export const mediaCore: MediaCore = {
         return { outputPath: o };
       }
       case 'broll': {
-        // generate a kinetic gradient background (no external footage). 8s default.
+        // real stock footage (Pexels -> Pixabay, cached) normalized to the vertical canvas;
+        // degrades to the kinetic gradient when no provider delivers (offline / no keys).
         const o = out(ctx, 'broll');
-        await ff(['-f', 'lavfi', '-i', 'gradients=s=1080x1920:c0=0x1b1030:c1=0x7c5cff:duration=8:speed=0.03',
-          '-t', '8', '-c:v', 'libx264', '-preset', 'ultrafast', '-pix_fmt', 'yuv420p', o], sig).catch(async () => {
-          await ff(['-f', 'lavfi', '-i', 'color=c=0x1b1030:s=1080x1920:d=8', '-c:v', 'libx264', '-preset', 'ultrafast', '-pix_fmt', 'yuv420p', o], sig);
+        const dur = Math.min(30, Math.max(2, op.durationSec ?? 8));
+        const stock = await fetchStockBroll(op.keywords);
+        if (stock) {
+          await ff(['-stream_loop', '-1', '-t', String(dur), '-i', stock, '-vf',
+            'scale=1080:1920:force_original_aspect_ratio=increase,crop=1080:1920',
+            '-an', '-c:v', 'libx264', '-preset', 'ultrafast', '-pix_fmt', 'yuv420p', o], sig);
+          return { outputPath: o };
+        }
+        await ff(['-f', 'lavfi', '-i', `gradients=s=1080x1920:c0=0x1b1030:c1=0x7c5cff:duration=${dur}:speed=0.03`,
+          '-t', String(dur), '-c:v', 'libx264', '-preset', 'ultrafast', '-pix_fmt', 'yuv420p', o], sig).catch(async () => {
+          await ff(['-f', 'lavfi', '-i', `color=c=0x1b1030:s=1080x1920:d=${dur}`, '-c:v', 'libx264', '-preset', 'ultrafast', '-pix_fmt', 'yuv420p', o], sig);
         });
         return { outputPath: o };
       }

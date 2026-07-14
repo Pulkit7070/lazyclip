@@ -2,7 +2,10 @@
 // Flow: free-tier cap -> route -> (YouTube ownership confirm) -> enqueue -> reply with file.
 import { route, ClarifyError, ImpossibleError } from '../router/index.js';
 import { cleanupOutput } from '../queue/index.js';
-import type { JobSpec, JobResult, Op, Platform } from '../types.js';
+import type { JobSpec, JobResult, Op, Platform, BrollSegment } from '../types.js';
+
+// per-clip plan from auto-moments (LLM): how to reframe + where b-roll cutaways go
+export interface EditPlan { reframe?: 'crop' | 'fit'; broll?: BrollSegment[] }
 
 export interface Incoming {
   userId: string;
@@ -11,6 +14,21 @@ export interface Incoming {
   attachmentPath?: string;
   isPro: boolean;
   confirmedOwnership?: boolean;   // set once the user confirms rights to a YouTube clip
+  editPlan?: EditPlan;            // set by the auto-moments flow
+}
+
+// pure: fold an EditPlan into the routed ops — reframe mode on the format op (explicit user
+// intent wins), cutaways inserted right after format so b-roll lands on the final canvas
+// but UNDER the captions burned later
+export function applyEditPlan(job: JobSpec, plan: EditPlan): JobSpec {
+  const ops: Op[] = [];
+  for (const o of job.ops) {
+    if (o.op === 'format') {
+      ops.push(plan.reframe && !o.mode ? { ...o, mode: plan.reframe } : o);
+      if (plan.broll?.length) ops.push({ op: 'cutaways', segments: plan.broll });
+    } else ops.push(o);
+  }
+  return { ...job, ops };
 }
 export type Reply =
   | { kind: 'text'; text: string }
@@ -58,6 +76,7 @@ export async function handleMessage(inc: Incoming, deps: GatewayDeps): Promise<R
     if (e instanceof ClarifyError || e instanceof ImpossibleError) return [{ kind: 'text', text: e.message }];
     throw e;
   }
+  if (inc.editPlan) job = applyEditPlan(job, inc.editPlan);
 
   // YouTube: require an ownership/rights confirmation before we download anything
   if (job.mode === 'clip' && !inc.confirmedOwnership) {

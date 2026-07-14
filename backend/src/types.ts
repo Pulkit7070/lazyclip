@@ -5,14 +5,20 @@ export type Op =
   | { op: 'trim';      start: string; end: string }
   | { op: 'captions';  source: 'whisper' | 'script'; style: 'karaoke' | 'meme' | 'clean'; text?: string;
       cues?: { start: number; end: number; text: string }[] }   // timed cues (whisper words / paced script)
-  | { op: 'format';    aspect: '9:16' | '1:1' | '16:9' }
+  | { op: 'format';    aspect: '9:16' | '1:1' | '16:9';
+      mode?: 'crop' | 'fit';          // crop = fill frame (may cut edges), fit = blur-pad (keeps everything)
+      focusX?: number }               // 0-1 horizontal subject center for crop (default 0.5 = center)
   | { op: 'speed';     factor: number }
   | { op: 'convert';   to: 'mp4' | 'mp3' | 'gif' | 'webm' }
   | { op: 'watermark'; text: string; show: boolean; position?: 'br' | 'bl' | 'tr' | 'tl' }
   | { op: 'sticker' }
   | { op: 'thumbnail'; at: string }
   | { op: 'voiceover'; voiceId: string; script: string }
-  | { op: 'broll';     keywords: string[] };
+  | { op: 'broll';     keywords: string[]; durationSec?: number }
+  | { op: 'cutaways';  segments: BrollSegment[] };   // b-roll cutaways over an A-roll clip
+
+// b-roll cutaway window: `at` seconds into the clip, `dur` seconds long
+export interface BrollSegment { at: number; dur: number; keywords: string[] }
 
 export type OpName = Op['op'];
 

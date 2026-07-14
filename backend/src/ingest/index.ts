@@ -12,9 +12,11 @@ export class IngestError extends Error {}
 export function ytdlpArgs(url: string, sections: string | undefined, dest: string): string[] {
   // merge best video+audio streams — progressive "mp4/best" often resolves to an audio-only
   // or missing stream on modern YouTube (especially from datacenter IPs)
-  // 720p cap: YouTube throttles datacenter IPs — a 45s section is ~45s at 720p vs 2x+ at 1080p,
-  // and the 9:16 render upscales either way
-  const args = ['--no-playlist', '--no-warnings', '-f', 'bv*[height<=720]+ba/b',
+  // 1080p default: a 9:16 crop keeps only ~1/3 of a wide frame, so a 720p source means ~2.7x
+  // upscale and soft clips. YouTube throttles datacenter IPs — set YT_MAX_HEIGHT=720 there if
+  // section downloads get too slow.
+  const cap = Number(process.env.YT_MAX_HEIGHT) || 1080;
+  const args = ['--no-playlist', '--no-warnings', '-f', `bv*[height<=${cap}]+ba/b`,
     '--merge-output-format', 'mp4', '-o', dest];
   if (sections) args.push('--download-sections', sections, '--force-keyframes-at-cuts');
   args.push(url);

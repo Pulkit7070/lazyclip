@@ -81,6 +81,29 @@ describe('media-core (real ffmpeg)', () => {
     await rm((globalThis as any).__last, { recursive: true, force: true });
   }, 30000);
 
+  it('format 9:16 fit (blur-pad) -> 1080x1920', async () => {
+    const { outputPath } = await run({ op: 'format', aspect: '9:16', mode: 'fit' });
+    const p = await ffprobe(outputPath);
+    expect(p.width).toBe(1080); expect(p.height).toBe(1920);
+    await rm((globalThis as any).__last, { recursive: true, force: true });
+  }, 30000);
+
+  it('format 9:16 focused crop -> 1080x1920', async () => {
+    const { outputPath } = await run({ op: 'format', aspect: '9:16', mode: 'crop', focusX: 0.8 });
+    const p = await ffprobe(outputPath);
+    expect(p.width).toBe(1080); expect(p.height).toBe(1920);
+    await rm((globalThis as any).__last, { recursive: true, force: true });
+  }, 30000);
+
+  it('cutaways offline (no stock keys) -> passthrough, duration preserved', async () => {
+    const before = await ffprobe(SAMPLE);
+    const { outputPath } = await run({ op: 'cutaways', segments: [{ at: 2, dur: 3, keywords: ['city', 'traffic'] }] });
+    const p = await ffprobe(outputPath);
+    expect(p.hasVideo).toBe(true);
+    expect(Math.abs(p.durationSec - before.durationSec)).toBeLessThan(1);
+    await rm((globalThis as any).__last, { recursive: true, force: true });
+  }, 30000);
+
   it('broll -> 1080x1920 background video', async () => {
     const { outputPath } = await run({ op: 'broll', keywords: ['upi', 'india'] }, '');
     const p = await ffprobe(outputPath);

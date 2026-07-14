@@ -94,7 +94,8 @@ async function autoMoments(url: string, userId: string, ctx: any) {
     if (i > 0) await new Promise((r) => setTimeout(r, 15_000));   // space extractions — rapid ones get 403'd
     await ctx.reply(`✂️ ${m.start}–${m.end}: ${m.hook}`).catch(() => {});
     await dispatch({ userId, platform: 'telegram', text: `clip ${url} ${m.start} to ${m.end}`,
-      isPro: false, confirmedOwnership: true }, ctx, new Map());
+      isPro: false, confirmedOwnership: true,
+      editPlan: { reframe: m.reframe, broll: m.broll } }, ctx, new Map());
   }
 }
 

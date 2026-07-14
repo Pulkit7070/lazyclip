@@ -7,7 +7,30 @@ import { mkdtemp, readdir, readFile, rm } from 'node:fs/promises';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 
-export interface Moment { start: string; end: string; hook: string }
+import type { BrollSegment } from './types.js';
+
+export interface Moment {
+  start: string; end: string; hook: string;
+  reframe?: 'crop' | 'fit';        // crop = subject-focused fill, fit = blur-pad (wide shots, on-screen text)
+  broll?: BrollSegment[];          // cutaway windows, `at` seconds RELATIVE to the moment start
+}
+
+// pure: validate one LLM moment -> Moment (broll times converted from absolute video seconds
+// to offsets inside the clip; bad entries dropped, hard-clamped later by media-core too)
+export function toMoment(x: any, mmssFn: (s: number) => string): Moment | null {
+  if (!Number.isFinite(x?.start_sec) || !Number.isFinite(x?.end_sec) || x.end_sec <= x.start_sec) return null;
+  const endSec = Math.min(x.end_sec, x.start_sec + 30);
+  const broll: BrollSegment[] = (Array.isArray(x.broll) ? x.broll : [])
+    .filter((b: any) => Number.isFinite(b?.at_sec) && Number.isFinite(b?.dur_sec) && Array.isArray(b?.keywords) && b.keywords.length)
+    .map((b: any) => ({ at: b.at_sec - x.start_sec, dur: b.dur_sec, keywords: b.keywords.map(String).slice(0, 4) }))
+    .filter((b: BrollSegment) => b.at >= 0 && b.at < endSec - x.start_sec)
+    .slice(0, 2);
+  return {
+    start: mmssFn(x.start_sec), end: mmssFn(endSec), hook: String(x.hook ?? ''),
+    reframe: x.reframe === 'fit' ? 'fit' : x.reframe === 'crop' ? 'crop' : undefined,
+    broll: broll.length ? broll : undefined,
+  };
+}
 
 const SUB_LANGS = ['en', 'en-orig', 'hi-orig', 'hi'];
 
@@ -69,7 +92,14 @@ export async function pickMoments(url: string, count = 3): Promise<Moment[]> {
         role: 'user',
         content: `Timestamped transcript of a YouTube video. Pick the ${count} BEST 15-30 second segments ` +
           `for viral vertical shorts (punchlines, roasts, high-energy or surprising moments). Segments must ` +
-          `not overlap. Reply as JSON: {"moments":[{"start_sec":int,"end_sec":int,"hook":"<=6 word overlay"}]}\n\n` +
+          `not overlap.\n` +
+          `For each segment also produce a mini edit plan:\n` +
+          `- "reframe": "crop" if one person talking is the focus, "fit" if the wide frame matters ` +
+          `(on-screen text, gameplay, multiple people spread out).\n` +
+          `- "broll": 0-2 cutaway windows where stock footage of what is being SAID would boost retention ` +
+          `(never cover the punchline; 2-4s each). Use absolute video seconds and 2-4 concrete stock-search keywords.\n` +
+          `Reply as JSON: {"moments":[{"start_sec":int,"end_sec":int,"hook":"<=6 word overlay",` +
+          `"reframe":"crop"|"fit","broll":[{"at_sec":int,"dur_sec":int,"keywords":["..."]}]}]}\n\n` +
           lines.join('\n').slice(0, 24_000),
       }],
     }),
@@ -78,9 +108,9 @@ export async function pickMoments(url: string, count = 3): Promise<Moment[]> {
   const j = await res.json();
   const parsed = JSON.parse(j.choices?.[0]?.message?.content ?? '{}');
   const moments = (parsed.moments ?? [])
-    .filter((x: any) => Number.isFinite(x.start_sec) && Number.isFinite(x.end_sec) && x.end_sec > x.start_sec)
-    .slice(0, count)
-    .map((x: any) => ({ start: mmss(x.start_sec), end: mmss(Math.min(x.end_sec, x.start_sec + 30)), hook: String(x.hook ?? '') }));
+    .map((x: any) => toMoment(x, mmss))
+    .filter((m: Moment | null): m is Moment => m !== null)
+    .slice(0, count);
   if (!moments.length) throw new Error('could not find good moments — give me a range like "2:30 to 3:15"');
   return moments;
 }
