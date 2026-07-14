@@ -1,8 +1,8 @@
-# reely — Setup
+# reely - Setup
 
 ## ✅ Already working locally (done automatically)
 
-The pipeline runs end-to-end from the terminal right now — no Hermes, no Telegram, no API keys.
+The pipeline runs end-to-end from the terminal right now - no agent runtime, no Telegram, no API keys.
 
 ```bash
 npm install
@@ -22,12 +22,12 @@ Installed for you: `yt-dlp` (brew), `telegraf` (npm), `.env` created from the te
 
 ---
 
-## 🔧 Manual steps (kept aside — need your accounts/keys)
+## 🔧 Manual steps (kept aside - need your accounts/keys)
 
 Everything below is optional for the local demo (there are offline fallbacks) but required for the
 full/live experience and the buildathon power-ups.
 
-### 1. API keys — edit `.env`
+### 1. API keys - edit `.env`
 | Var | For | Without it (fallback) |
 |---|---|---|
 | `LLM_API_KEY` (+`LLM_BASE_URL`,`LLM_MODEL`) | brainstorm/script quality | template scripts |
@@ -39,17 +39,17 @@ full/live experience and the buildathon power-ups.
 
 Get a Telegram token from **@BotFather** (`/newbot`). Whisper: Groq (`https://api.groq.com/openai/v1`) or OpenAI.
 
-### 2. Real caption text (burned) — needs a full ffmpeg build
+### 2. Real caption text (burned) - needs a full ffmpeg build
 This machine's ffmpeg lacks `drawtext`/`libass`, so captions render as a bar. On the VPS install a
-full build: `brew install ffmpeg` here already includes libass in most bottles — verify with
+full build: `brew install ffmpeg` here already includes libass in most bottles - verify with
 `ffmpeg -filters | grep -E "drawtext|subtitles"`. On Linux use the static ffmpeg or `apt install ffmpeg`.
 
-### 3. Hermes (the buildathon eligibility layer)
-Hermes is the runtime that connects Telegram/WhatsApp and routes to the reely skill. Install it on
-the day from the **official handbook one-liner** (Nous Research `hermes-agent`), then:
+### 3. Agent runtime (the eligibility layer)
+The agent runtime connects Telegram/WhatsApp and routes to the reely skill. Install it on
+the day from the **official handbook one-liner** (the agent runtime), then:
 
 ```bash
-# ~/.hermes/config.yaml (template)
+# agent-runtime config (template)
 model:
   provider: openai-api
   base_url: https://api.openai.com/v1     # or OpenRouter / Nous Portal
@@ -61,11 +61,11 @@ skills:
   dirs: [ /Users/psudokit/video-hermess ]   # picks up .hermes.md -> the reely skill
 ```
 
-Then `hermes gateway`. The reely skill's entry is `src/gateway/run.ts` (Telegram) which calls
-`createReely()`. Keep prompt-history + commits as the Way-1 (built-with-Hermes) receipts.
+Then start the agent-runtime gateway. The reely skill's entry is `src/gateway/run.ts` (Telegram) which calls
+`createReely()`. Keep prompt-history + commits as the Way-1 (built-with-Codex) receipts.
 
-> Note: exact Hermes install command comes from the buildathon handbook on the day. Don't pre-build
-> the product code off-site — this repo is the reference/prototype; rebuild fresh on the floor.
+> Note: exact agent-runtime install command comes from the buildathon handbook on the day. Don't pre-build
+> the product code off-site - this repo is the reference/prototype; rebuild fresh on the floor.
 
 ### 4. Run the live bot (after token set)
 ```bash

@@ -1,34 +1,34 @@
-# reely — Parallel Build Plan (2 CLIs × 5 tasks)
+# reely - Parallel Build Plan (2 CLIs × 5 tasks)
 
 This file is **self-contained**. An agent with zero prior context can execute any task below
 using only this file (+ `ARCHITECTURE.md` in the same folder). Read §0 first, then your task.
 
 ---
 
-## 0. READ FIRST — full context
+## 0. READ FIRST - full context
 
 ### What we're building
-**reely** — a content studio that lives in a chat, built as a native **Hermes skill**
-(Hermes = Nous Research's open-source agent framework). A user sends a message to a Telegram/
+**reely** - a content studio that lives in a chat, built as a native **agent skill**
+(Codex is the agent I built it with). A user sends a message to a Telegram/
 WhatsApp bot and gets back a **captioned vertical short**. Three input modes, ONE shared engine
-(*Hermes writes the words, ffmpeg cuts the video*):
+(*the agent writes the words, ffmpeg cuts the video*):
 
-1. **Generate** — user gives a topic → Hermes brainstorms 2–3 viral angles → writes hook+script
-   → ElevenLabs voiceover → captions over kinetic text/b-roll → a 14–20s reel.
-2. **Edit** — user sends raw footage → Whisper transcribes → Hermes writes captions/meme text
+1. **Generate** - user gives a topic → it brainstorms 2-3 viral angles → writes hook+script
+   → ElevenLabs voiceover → captions over kinetic text/b-roll → a 14-20s reel.
+2. **Edit** - user sends raw footage → Whisper transcribes → the agent writes captions/meme text
    → ffmpeg trims/captions/formats → subtitled clip or sticker.
-3. **Clip** — user pastes a YouTube link + timestamps (or a topic) → yt-dlp downloads **only that
+3. **Clip** - user pastes a YouTube link + timestamps (or a topic) → yt-dlp downloads **only that
    segment** → captioned vertical short.
 
-### Why Hermes (eligibility — do not remove)
-Hermes is the runtime the user talks to. Its **gateway** connects Telegram/WhatsApp; the media
-toolset registers as a Hermes **skill**; Hermes does the **content generation** (brainstorm/
-script/captions). We also build the code *with* Hermes (keep session receipts). This is what
-makes the project eligible — the product runs ON Hermes and users interact THROUGH it.
+### Why the agent runtime (eligibility)
+The agent runtime is what the user talks to. Its **gateway** connects Telegram/WhatsApp; the media
+toolset registers as a an agent **skill**; the agent does the **content generation** (brainstorm/
+script/captions). We also build the code *with* Codex (keep session receipts). This is what
+makes the project eligible - the product runs on the agent runtime and users interact through it.
 
 ### Stack (decided)
-TypeScript/Node · Hermes (Telegram gateway first) · `ffmpeg` + `yt-dlp` (system binaries) ·
-Whisper via API (Groq/OpenAI) · ElevenLabs API (voice) · OpenAI-compatible LLM (via Hermes) ·
+TypeScript/Node · agent runtime (Telegram gateway first) · `ffmpeg` + `yt-dlp` (system binaries) ·
+Whisper via API (Groq/OpenAI) · ElevenLabs API (voice) · OpenAI-compatible LLM ·
 Convex (state) · Cloudflare Pages+R2 (landing/delivery) · Dodo (₹99 unlock) · queue = in-process
 concurrency limiter (`p-limit`). **No Remotion. No GPU. Model is a remote API call.**
 
@@ -37,7 +37,7 @@ concurrency limiter (`p-limit`). **No Remotion. No GPU. Model is a remote API ca
   arrays built from the validated Op schema (below).
 - ffmpeg: `-protocol_whitelist file` (no network protocols), `-threads 2`.
 - yt-dlp: `--download-sections` only; cap source duration; reject live streams.
-- Per job: ≤50MB, ≤5min, ≤1080p, wall-clock 60–120s → `kill -9` the process group on timeout.
+- Per job: ≤50MB, ≤5min, ≤1080p, wall-clock 60-120s → `kill -9` the process group on timeout.
 - Global concurrency = `cores-1`; per-user = 1 active; unique temp dir per job; delete all temp
   files after send.
 
@@ -49,9 +49,9 @@ concurrency limiter (`p-limit`). **No Remotion. No GPU. Model is a remote API ca
 - Run: `npm run build` (tsc), `npm test` (vitest). Env in `.env` (see `.env.example`).
 
 ### Buildathon note
-Fresh build, on-site. This doc is the execution script for the day — don't ship pre-built code.
+Fresh build, on-site. This doc is the execution script for the day - don't ship pre-built code.
 
-### THE FROZEN CONTRACTS (create as `src/types.ts` — verbatim)
+### THE FROZEN CONTRACTS (create as `src/types.ts` - verbatim)
 ```ts
 export type Op =
   | { op: 'clip';      start: string; end: string }
@@ -92,14 +92,14 @@ export interface ChatCtx { userId: string; platform: JobSpec['platform']; attach
 
 ## How to run (two parallel CLIs)
 
-- **CLI-1 runs Batch A** (foundation + integration spine). **Run A1 FIRST** — it creates the repo,
+- **CLI-1 runs Batch A** (foundation + integration spine). **Run A1 FIRST** - it creates the repo,
   `src/types.ts`, and fixtures, then commits/pushes.
 - **CLI-2 runs Batch B** (independent leaf modules). Each B task only needs `src/types.ts`. Either
   `git pull` after A1 pushes, or (if on a separate clone) create `src/types.ts` from §0 verbatim so
   both stay identical.
 - Both share one git repo (or two worktrees of it). Because each task writes only its own dir,
   parallel commits don't collide.
-- **A5 is the join point:** run it only after Batch B's modules (B1–B5) are merged.
+- **A5 is the join point:** run it only after Batch B's modules (B1-B5) are merged.
 
 Dependency map:
 ```
@@ -115,7 +115,7 @@ A1 (foundation) ──┬─▶ B1 media-core  ─┐
 
 ---
 
-## BATCH A — CLI-1 (foundation + integration spine)
+## BATCH A - CLI-1 (foundation + integration spine)
 
 ### A1 · Repo foundation  🔒 run first, blocks everyone
 - Create: repo skeleton, `package.json` (deps: typescript, vitest, p-limit, convex, telegraf or
@@ -141,14 +141,14 @@ A1 (foundation) ──┬─▶ B1 media-core  ─┐
 - **Done when:** 6 example messages (edit/clip/generate + a vague one + an impossible chain +
   a YT link) map to the expected JobSpec. `src/router/router.test.ts` green.
 
-### A4 · Hermes skill + Telegram gateway  (`src/gateway/`)
-- Register the reely skill in Hermes; wire the Telegram gateway: message/file in → `route()` →
+### A4 · agent skill + Telegram gateway  (`src/gateway/`)
+- Register the reely agent skill; wire the Telegram gateway: message/file in → `route()` →
   `enqueue()` → send resulting file back. Progress/"in queue" replies. Ownership checkbox prompt
   for YouTube links.
 - **Done when:** a real TG chat: send text or a file, receive a status reply then a file back
   (can use a passthrough op until A5). Manual test documented in `src/gateway/README.md`.
 
-### A5 · Integrate + Mode 2 slice + Dodo + demo  (JOIN — after B1–B5 merged)
+### A5 · Integrate + Mode 2 slice + Dodo + demo  (JOIN - after B1-B5 merged)
 - Replace mocks with real B modules. Wire **Mode 2 (edit)** fully: upload → transcribe (B3) →
   captions (B4) → media-core ops (B1) → send. Hook Dodo isPro (B5) to the watermark toggle.
   Enforce free-tier daily cap (B5). Add the 3 remaining edge handlers (bad file, oversize,
@@ -158,13 +158,13 @@ A1 (foundation) ──┬─▶ B1 media-core  ─┐
 
 ---
 
-## BATCH B — CLI-2 (independent leaf modules; each only needs `src/types.ts`)
+## BATCH B - CLI-2 (independent leaf modules; each only needs `src/types.ts`)
 
 ### B1 · media-core  (`src/media/`)  ⭐ highest priority in B (A5 needs it)
 - Implement `runOp(inputPath: string, op: Op, ctx: JobCtx): Promise<{ outputPath: string }>` for
   every Op: trim, clip, captions (burn `.ass`/`drawtext`; karaoke/meme/clean), format (9:16/1:1/
   16:9), speed, convert (mp4/mp3/gif/webm), watermark, sticker, thumbnail. Arg-array calls only;
-  `-protocol_whitelist file`, `-threads 2`. (voiceover/broll can stub or live here — coordinate.)
+  `-protocol_whitelist file`, `-threads 2`. (voiceover/broll can stub or live here - coordinate.)
 - **Done when:** each op turns `fixtures/sample.mp4` into a valid output verified by ffprobe.
   `src/media/media.test.ts` green.
 
@@ -181,7 +181,7 @@ A1 (foundation) ──┬─▶ B1 media-core  ─┐
   `src/transcribe/transcribe.test.ts` green.
 
 ### B4 · content (LLM)  (`src/content/`)
-- Implement `brainstorm(topic): Promise<Angle[]>` (2–3 viral angles), `script(angle):
+- Implement `brainstorm(topic): Promise<Angle[]>` (2-3 viral angles), `script(angle):
   Promise<{ script; captions }>` (VO script that reads in ≤20s + caption text), and
   `captionText(words: Word[], style): Promise<string>` for edit/clip modes.
 - **Done when:** a topic yields 3 distinct angles; an angle yields a <20s script.

@@ -133,7 +133,7 @@ export default function FinalCTA() {
                 <div className="w-12 h-12 rounded-full bg-green-50 border border-green-200 flex items-center justify-center text-acidGreen mb-4">
                   <Check className="w-6 h-6 stroke-[3]" />
                 </div>
-                <h4 className="font-display font-bold text-xl text-charcoal">🎉 Congratulations — you're in!</h4>
+                <h4 className="font-display font-bold text-xl text-charcoal">🎉 Congratulations, you're in!</h4>
                 <p className="font-sans text-xs text-secondaryText mt-2 leading-relaxed">
                   We saved <strong className="text-charcoal font-semibold">{email}</strong> and we'll email you the moment early access opens.
                 </p>

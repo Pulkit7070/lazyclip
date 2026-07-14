@@ -1,6 +1,6 @@
 # Deploy the agent to Google Cloud Run
 
-Prereqs (your machine — not installed here yet):
+Prereqs (your machine - not installed here yet):
 ```bash
 brew install --cask google-cloud-sdk   # or https://cloud.google.com/sdk/docs/install
 gcloud auth login

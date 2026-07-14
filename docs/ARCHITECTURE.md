@@ -1,6 +1,6 @@
-# reely — Architecture
+# reely - Architecture
 
-Chat-native content studio, built as a native **Hermes skill**. One engine, three input
+Chat-native content studio, built as a native **agent skill**. One engine, three input
 modes. ffmpeg-first, no Remotion, everything heavy is capped and queued.
 
 ---
@@ -9,12 +9,12 @@ modes. ffmpeg-first, no Remotion, everything heavy is capped and queued.
 
 ```
                  ┌─────────────────────────────────────────────┐
-   chat msg ───▶ │  HERMES GATEWAY (Telegram first, then WA/DC) │
+   chat msg ───▶ │  CHAT GATEWAY (Telegram first, then WA/DC) │
  (idea/file/URL) └───────────────┬─────────────────────────────┘
                                  │  message + attachments + user ctx
                                  ▼
                  ┌─────────────────────────────────────────────┐
-                 │  reely SKILL (Hermes)                        │
+                 │  reely SKILL                        │
                  │   • intent + brainstorm/script (LLM)         │
                  │   • NL → OpSchema (validated, no shell str)  │
                  └───────────────┬─────────────────────────────┘
@@ -31,9 +31,9 @@ modes. ffmpeg-first, no Remotion, everything heavy is capped and queued.
                  Convex (jobs/users/usage)   Cloudflare (landing/OG/deliver)   Dodo (₹99 unlock)
 ```
 
-**Eligibility:** Hermes is both the coding partner (Way 1) and the base harness the product
+**Eligibility:** Codex is the coding partner (Way 1) and the agent runtime is the base harness the product
 runs on with end users interacting through it (Way 2). The skill registration + NL routing +
-content generation is the "≥1 Hermes capability doing real work."
+content generation is the "≥1 agent capability doing real work."
 
 ---
 
@@ -42,13 +42,13 @@ content generation is the "≥1 Hermes capability doing real work."
 | Layer | Choice | Why |
 |---|---|---|
 | Language | TypeScript / Node | fits Convex + Cloudflare + Pulkit's stack |
-| Agent | Hermes (Nous Research), Telegram gateway first | mandatory; TG is the recommended first gateway |
+| Agent | agent runtime, Telegram gateway first | mandatory; TG is the recommended first gateway |
 | Media cut | `ffmpeg` (system binary) | does 100% of trim/caption/format/convert/sticker |
 | Ingest | `yt-dlp` with `--download-sections` | segment-only download = light |
 | Transcribe | Whisper via fast API (Groq/OpenAI) | no local model infra; swap to whisper.cpp later |
 | Voice | ElevenLabs API | Mode 1 voiceover; +25 power-up |
 | Live search | Linkup API | Mode 1 grounds the script in current facts + sources; +25 power-up |
-| LLM | OpenAI-compatible (GPT-5.6 Sol via Hermes) | brainstorm + script + captions + routing |
+| LLM | OpenAI-compatible (GPT-5.6 Sol) | brainstorm + script + captions + routing |
 | State | Convex | jobs/users/usage + free-tier cap; +25 |
 | Host/deliver | Cloudflare Pages + R2 | landing, OG cards, temp file URLs; +25 |
 | Pay | Dodo checkout + webhook | ₹99 watermark unlock; +25 |
@@ -56,7 +56,7 @@ content generation is the "≥1 Hermes capability doing real work."
 
 ---
 
-## 3. Contracts (freeze these FIRST — everything builds against them)
+## 3. Contracts (freeze these FIRST - everything builds against them)
 
 ```ts
 // ---- Op schema: the ONLY thing that touches ffmpeg. User text never becomes a shell string.
@@ -104,7 +104,7 @@ route(message: string, ctx: ChatCtx): Promise<JobSpec>;                         
 enqueue(job: JobSpec): Promise<JobResult>;                                          // queue
 ```
 
-Any change to these types is a broadcast event — announce before editing so parallel work
+Any change to these types is a broadcast event - announce before editing so parallel work
 doesn't drift.
 
 ---
@@ -136,11 +136,11 @@ enqueue(job)
 ## 5. Resource & safety (the anti-crash rules)
 
 - Global concurrency = `cores - 1`; per-user = 1 active; queue depth > 20 → reject politely.
-- Per job: ≤50MB, ≤5min, ≤1080p, wall-clock 60–120s → `kill -9` the **process group**.
+- Per job: ≤50MB, ≤5min, ≤1080p, wall-clock 60-120s → `kill -9` the **process group**.
 - `ffmpeg -threads 2`; `ffmpeg -protocol_whitelist file` (no network protocols → no SSRF).
 - yt-dlp: `--download-sections` only, cap source duration, reject live streams.
 - Disk: unique temp dir/job, delete after send, free-space guard, TTL sweep for orphans.
-- **No user text is ever interpolated into a shell string** — ops run with argument arrays.
+- **No user text is ever interpolated into a shell string** - ops run with argument arrays.
 - Free-tier daily cap enforced in Convex (`usage.count`), watermark `show = !isPro`.
 
 ---
@@ -157,17 +157,17 @@ Dodo webhook → `users.isPro = true`. Ref codes on watermark → attribution fo
 
 ---
 
-## 7. Module boundaries (map to subagents — §PLAN.md)
+## 7. Module boundaries (map to subagents - §PLAN.md)
 
 | # | Module | Depends on | Isolated-testable? |
 |---|---|---|---|
 | A | media-core (ffmpeg op fns) | Op type | ✅ with sample.mp4 |
 | B | ingest (yt-dlp + upload + probe) | JobSpec.source | ✅ with a URL + file |
-| C | transcribe (whisper) | — | ✅ with sample.mp4 |
+| C | transcribe (whisper) | - | ✅ with sample.mp4 |
 | D | content (brainstorm/script/captions) | Linkup (search) | ✅ text I/O |
-| D+ | search (Linkup grounding) | — | ✅ parse + offline fallback |
+| D+ | search (Linkup grounding) | - | ✅ parse + offline fallback |
 | E | router (NL → JobSpec) | Op names (A) | ✅ msg → schema |
 | F | queue/executor | A interface | ✅ with mock ops |
 | G | persistence (Convex) | schema | ✅ dashboard |
-| H | gateway (Hermes skill wiring) | E,F,G | integration only |
+| H | gateway (agent skill wiring) | E,F,G | integration only |
 | I | payments + landing (Dodo/CF) | G | ✅ semi |

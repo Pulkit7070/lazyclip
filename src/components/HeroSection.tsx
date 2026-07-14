@@ -298,7 +298,7 @@ export default function HeroSection() {
                   <Check className="w-5 h-5 stroke-[3]" />
                 </div>
                 <div>
-                  <h4 className="font-display font-bold text-sm text-charcoal">🎉 Congratulations — you're in!</h4>
+                  <h4 className="font-display font-bold text-sm text-charcoal">🎉 Congratulations, you're in!</h4>
                   <p className="font-sans text-[11px] text-secondaryText mt-0.5">
                     We'll email <span className="text-charcoal font-medium">{email}</span> the moment early access opens.
                   </p>

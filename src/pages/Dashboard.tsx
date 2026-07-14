@@ -60,11 +60,11 @@ function DashboardInner() {
     setBusy(true); setStatus("");
     try {
       const r = (await requestGeneration({ mode, prompt })) as { mode: string };
-      setStatus(r.mode === "free" ? "✅ Queued (free generation used). Your reel is being made — it'll appear here shortly." : "✅ Queued (1 credit used). Your reel is being made — it'll appear here shortly.");
+      setStatus(r.mode === "free" ? "✅ Queued (free generation used). Your reel is being made, it'll appear here shortly." : "✅ Queued (1 credit used). Your reel is being made, it'll appear here shortly.");
       setPrompt("");
     } catch (e: any) {
       if (e?.data?.code === "NO_CREDITS") setStatus("out-of-credits");
-      else setStatus("Something went wrong — try again.");
+      else setStatus("Something went wrong, try again.");
     } finally { setBusy(false); }
   };
 

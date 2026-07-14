@@ -15,7 +15,7 @@ export default function Pricing() {
       const { url } = (await createCheckout({ packId, returnUrl: window.location.origin + "/create" })) as { url: string };
       window.location.href = url;
     } catch {
-      alert("Checkout isn't available yet — payments are being set up.");
+      alert("Checkout isn't available yet, payments are being set up.");
     }
   };
 
@@ -29,7 +29,7 @@ export default function Pricing() {
       <main className="max-w-5xl mx-auto px-6 pt-10 pb-24 text-center">
         <h1 className="font-display font-extrabold text-4xl md:text-6xl tracking-tight">Simple, credit-based pricing</h1>
         <p className="font-sans text-secondaryText mt-4 max-w-xl mx-auto">
-          Start free — every account gets <b>5 free generations</b>. Buy credits when you need more. 1 credit = 1 reel.
+          Start free. Every account gets <b>5 free generations</b>. Buy credits when you need more. 1 credit = 1 reel.
         </p>
 
         <div className="grid sm:grid-cols-3 gap-5 mt-12 text-left">
